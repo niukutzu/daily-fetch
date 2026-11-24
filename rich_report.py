@@ -56,6 +56,7 @@ JSON_FORMAT = """
   "terms": [{"term": "English（中文）", "explain": "两三句大白话解释"}]
 }
 【规则】
+- 标有「Paywall: 需付费订阅」的条目：同一件事有免费来源报道时，一定选免费来源那条；只有付费来源报道的重要新闻才选付费那条。
 - items 里的 id 必须是抓取结果里真实存在的编号；同一件事被多个来源报道时只选一条（优先选原始发布方），其余不要。
 - must 字段：选出 5 条今日必看，分别填 1～5（1 最重要），其余都填 0。
 - 每条 intro 只能根据该条的 Summary、Article lead 写，不要加入抓取结果里没有的事实和数字。
@@ -157,6 +158,7 @@ def build(bot, today, title, prompt, user, fetched, ask):
             "title_en": _clean_en(src.get("title", "")),
             "url": src.get("url", ""),
             "discuss": src.get("discuss", ""),
+            "paywall": bool(src.get("paywall")),
             "intro": str(x.get("intro", "")).strip(),
             "heat": src.get("heat_text", ""),
             "date": _short_date(src.get("published", "")),
@@ -198,6 +200,7 @@ def build(bot, today, title, prompt, user, fetched, ask):
                 "title_en": _clean_en(it.get("title", "")),
                 "url": it.get("url", ""),
                 "discuss": it.get("discuss", ""),
+                "paywall": bool(it.get("paywall")),
                 "brief": str(n.get("brief") or "").strip(),
                 "heat": it.get("heat_text", ""),
             })
@@ -217,6 +220,9 @@ def build(bot, today, title, prompt, user, fetched, ask):
     summary = f"汇总 {'、'.join(pubs[:14])}{' 等' if len(pubs) > 14 else ''}信源共 {len(items)} 条精选。"
     if str(data.get("overview", "")).strip():
         summary += str(data["overview"]).strip()
+    locked = sum(1 for i in items if i.get("paywall"))
+    if locked:
+        summary += f" 标 🔒 的 {locked} 条需要付费订阅才能看全文。"
     if failed:
         summary += f" 今日 {'、'.join(failed)} 没有返回内容。"
     if rankings:
@@ -233,9 +239,10 @@ def build(bot, today, title, prompt, user, fetched, ask):
     }
 
 
-def _md_link(title, url):
+def _md_link(title, url, paywall=False):
     t = title.replace("[", "【").replace("]", "】")
-    return f"[{t}]({url})" if url else t
+    lock = " 🔒" if paywall else ""
+    return (f"[{t}]({url})" if url else t) + lock
 
 
 def to_markdown(r):
@@ -243,7 +250,7 @@ def to_markdown(r):
     out = [r["summary"], "", "## " + r.get("must_title", "今日 {n} 条必看").replace("{n}", str(len(musts)))]
     for i in musts:
         when = f"（{i['when']}）" if i.get("when") else ""
-        out.append(f"- **【{i['source']}】{_md_link(i['title_zh'], i['url'])}**{when}：{i.get('must_text') or i['intro']}")
+        out.append(f"- **【{i['source']}】{_md_link(i['title_zh'], i['url'], i.get('paywall'))}**{when}：{i.get('must_text') or i['intro']}")
     if r.get("snapshot"):
         out += ["", "## 市场快照", "", "| 资产 | 最新 | 涨跌 |", "|---|---|---|"] + [f"| {x['name']} | {x['value']} | {x['change']} |" for x in r["snapshot"]]
     out += ["", "## 一手精选速览"]
@@ -254,12 +261,12 @@ def to_markdown(r):
         out += ["", f"### {c}（{len(rows)}）"]
         for i in rows:
             tail = " · ".join(x for x in (i.get("when", ""), i["heat"], i["date"]) if x)
-            out.append(f"- **【{i['source']}】{_md_link(i['title_zh'], i['url'])}**（{i['title_en']}）：{i['intro']}" + (f"　*{tail}*" if tail else ""))
+            out.append(f"- **【{i['source']}】{_md_link(i['title_zh'], i['url'], i.get('paywall'))}**（{i['title_en']}）：{i['intro']}" + (f"　*{tail}*" if tail else ""))
     for rk in r["rankings"]:
         out += ["", f"## {rk['name']}", "", "| 排名 | 信源 | 标题 | 简介 | 热度 |", "|---|---|---|---|---|"]
         for row in rk["rows"]:
             cell = lambda s: str(s).replace("|", "/").replace("\n", " ")
-            out.append(f"| {row['rank']} | {cell(row['source'])} | {cell(_md_link(row['title_zh'] or row['title_en'], row['url']))} | {cell(row['brief'])} | {cell(row['heat'])} |")
+            out.append(f"| {row['rank']} | {cell(row['source'])} | {cell(_md_link(row['title_zh'] or row['title_en'], row['url'], row.get('paywall')))} | {cell(row['brief'])} | {cell(row['heat'])} |")
     if r["terms"]:
         out += ["", f"## {r.get('terms_title', '今日新词')}"]
         for t in r["terms"]:

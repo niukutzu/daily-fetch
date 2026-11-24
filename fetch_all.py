@@ -314,6 +314,7 @@ def fetch_tech_semianalysis():
                 "url": post.get("canonical_url") or f"https://newsletter.semianalysis.com/p/{post.get('slug','')}",
                 "published": str(post.get("post_date", ""))[:19],
                 "summary": clean_text(post.get("subtitle") or post.get("description", ""), 400),
+                "paywall": post.get("audience") == "only_paid",
             })
         if items:
             return items, "L1_SUBSTACK_API", url
@@ -409,6 +410,54 @@ PUBLISHERS = {
     "importai.substack.com": "Import AI", "artificialanalysis.ai": "Artificial Analysis", "youtube.com": "YouTube",
     "economist.com": "The Economist", "fortune.com": "Fortune", "forbes.com": "Forbes", "venturebeat.com": "VentureBeat",
 }
+# 需要付费订阅才能看全文的网站（硬付费墙）。这些链接在报告里标 🔒，同一件事有免费报道时优先用免费的。
+PAYWALL = ("bloomberg.com", "wsj.com", "ft.com", "nytimes.com", "theinformation.com", "economist.com", "barrons.com",
+           "washingtonpost.com", "nikkei.com", "foreignaffairs.com", "theatlantic.com", "businessinsider.com",
+           "newyorker.com", "stratechery.com", "theathletic.com", "fortune.com", "seekingalpha.com", "puck.news")
+# 免费、可靠的新闻媒体（Techmeme 同一事件的其他报道里按这个顺序挑）
+FREE_OK = ("apnews.com", "reuters.com", "bbc.com", "bbc.co.uk", "theguardian.com", "npr.org", "cnbc.com", "axios.com",
+           "theverge.com", "techcrunch.com", "arstechnica.com", "semafor.com", "zdnet.com", "theregister.com",
+           "engadget.com", "cnn.com", "nbcnews.com", "cbsnews.com", "abcnews.go.com", "aljazeera.com", "dw.com",
+           "venturebeat.com", "geekwire.com", "9to5mac.com", "9to5google.com", "macrumors.com", "tomshardware.com",
+           "cnet.com", "techradar.com", "politico.com", "politico.eu", "404media.co", "electrek.co")
+
+
+def _dom_in(url: str, doms) -> bool:
+    h = _host(url)
+    return bool(h) and any(h == d or h.endswith("." + d) for d in doms)
+
+
+def is_paywalled(url: str) -> bool:
+    # 分享 / 赠阅链接（纽约时报 unlocked_article_code、华尔街日报 st=、FT accessToken）任何人都能免费看
+    if re.search(r"unlocked_article_code=|[?&]st=|accessToken=|[?&]gift=|giftCopy", url or ""):
+        return False
+    return _dom_in(url, PAYWALL)
+
+
+def techmeme_free_alternatives() -> dict:
+    """Techmeme 首页：每条头条下面列了其他媒体的同题报道。返回 {头条链接: [(媒体名, 免费链接), ...]}"""
+    try:
+        r = polite_get("https://www.techmeme.com/", referer="https://www.techmeme.com/")
+        soup = BeautifulSoup(r.text, "lxml")
+    except Exception:
+        return {}
+    alts, cur = {}, None
+    for clus in soup.select("div.clus"):
+        cur = None
+        for a in clus.find_all("a", href=True):
+            href = a["href"]
+            if "ourh" in (a.get("class") or []):
+                cur = href
+                alts.setdefault(cur, [])
+                continue
+            name = a.get_text(strip=True)
+            if cur and name and not name.startswith("@") and urlparse(href).path not in ("", "/") and _dom_in(href, FREE_OK):
+                alts[cur].append((name, href))
+    for k, v in alts.items():  # 按 FREE_OK 的顺序排（越靠前越优先）
+        v.sort(key=lambda x: next((i for i, d in enumerate(FREE_OK) if _dom_in(x[1], (d,))), 99))
+    return alts
+
+
 NO_LEAD = ("github.com", "huggingface.co", "artificialanalysis.ai", "news.google.com", "twitter.com", "x.com", "youtube.com")
 
 
@@ -439,7 +488,7 @@ def strip_tracking(url: str) -> str:
     if "#" in rest:
         rest, frag = rest.split("#", 1)
         frag = "#" + frag
-    keep = [kv for kv in rest.split("&") if kv and not re.match(r"(utm_\w+|reflink|st)=", kv)]
+    keep = [kv for kv in rest.split("&") if kv and not re.match(r"(utm_\w+|reflink)=", kv)]
     return base + ("?" + "&".join(keep) if keep else "") + frag
 
 
@@ -526,6 +575,20 @@ def enrich_tech(items: list):
         it.setdefault("publisher", publisher_of(it["url"], it["source"]) if it["source"] in ("Hacker News", "Techmeme", "TLDR Tech / AI") else it["source"])
         it["heat_text"] = heat_text(it)
 
+    # Techmeme 头条是付费媒体的：换成同一事件的免费报道（原付费链接留作备注）
+    alts = techmeme_free_alternatives()
+    swapped = 0
+    for it in items:
+        if it["source"] == "Techmeme" and is_paywalled(it["url"]):
+            key = it["url"]
+            cand = alts.get(key) or next((v for k, v in alts.items() if k.split("?")[0] == key.split("?")[0]), [])
+            if cand:
+                url = cand[0][1]
+                it["paywall_url"], it["url"], it["publisher"] = it["url"], strip_tracking(url), publisher_of(url, it["source"])
+                swapped += 1
+    if swapped:
+        print(f"[TECH] Techmeme 付费链接换成免费报道：{swapped} 条")
+
     # 同一链接在 HN 也出现：给其他条目补上 HN 热度
     hn = {re.sub(r"[?#].*$", "", x["url"]).rstrip("/"): x for x in items if x["source"] == "Hacker News"}
     for it in items:
@@ -605,7 +668,7 @@ def run_tech_bot():
         ("Ars Technica", lambda: fetch_rss_with_fallback("Ars Technica", "Tech Journalism", ["https://feeds.arstechnica.com/arstechnica/index"], "site:arstechnica.com", 5)),
         ("MIT Tech Review", lambda: fetch_rss_with_fallback("MIT Tech Review", "Deep Tech", ["https://www.technologyreview.com/feed/"], "site:technologyreview.com", 5)),
         ("SemiAnalysis", fetch_tech_semianalysis),
-        ("Stratechery", lambda: fetch_rss_with_fallback("Stratechery", "Tech Strategy", ["https://stratechery.com/feed/"], "site:stratechery.com", 4)),
+        ("The Verge", lambda: fetch_rss_with_fallback("The Verge", "Tech News", ["https://www.theverge.com/rss/index.xml"], "site:theverge.com", 6)),
         ("Simon Willison", lambda: fetch_rss_with_fallback("Simon Willison", "AI Engineering", ["https://simonwillison.net/atom/everything/"], "site:simonwillison.net", 5)),
         ("Latent Space", lambda: fetch_rss_with_fallback("Latent Space", "AI Engineering", ["https://www.latent.space/feed"], "site:latent.space", 4)),
         ("The Batch", fetch_tech_the_batch),
@@ -765,13 +828,13 @@ def run_finance_bot():
     tasks = [
         ("Polymarket", fetch_finance_polymarket),
         ("Visual Capitalist", lambda: fetch_rss_with_fallback("Visual Capitalist", "Data Visualization", ["https://www.visualcapitalist.com/feed/"], "site:visualcapitalist.com", 5)),
-        ("Nick Timiraos (WSJ)", fetch_finance_nick_timiraos),
-        ("Money Stuff (Bloomberg)", fetch_finance_money_stuff),
+        ("美联储官方公告", lambda: fetch_rss_with_fallback("Federal Reserve", "Fed Official", ["https://www.federalreserve.gov/feeds/press_all.xml"], None, 5)),
+        ("AP 商业新闻", lambda: fetch_rss_with_fallback("AP News", "Business", [], "site:apnews.com business OR economy OR markets", 6)),
         ("FRED", fetch_finance_fred_and_macro),
         ("Morning Brew", lambda: fetch_rss_with_fallback("Morning Brew", "Business Daily", [], "site:morningbrew.com/stories", 5)),
         ("Yahoo Finance", lambda: fetch_rss_with_fallback("Yahoo Finance", "Markets", ["https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EIXIC,BTC-USD,NVDA,AAPL,MSFT,TSLA&region=US&lang=en-US"], "site:finance.yahoo.com/news", 5)),
         ("Reuters Markets", lambda: fetch_rss_with_fallback("Reuters Markets", "Global Markets", [], "site:reuters.com/markets when:2d", 5)),
-        ("FT Unhedged", lambda: fetch_rss_with_fallback("FT Unhedged", "Financial Times", ["https://www.ft.com/unhedged?format=rss"], 'site:ft.com "Unhedged"', 4)),
+        ("CNBC 经济", lambda: fetch_rss_with_fallback("CNBC", "Economy & Markets", ["https://www.cnbc.com/id/20910258/device/rss/rss.html"], "site:cnbc.com economy OR markets OR fed", 6)),
         ("Apollo Daily Spark", fetch_finance_apollo),
         ("Sherwood News", lambda: fetch_rss_with_fallback("Sherwood News", "Markets & Tech", ["https://sherwood.news/rss.xml"], "site:sherwood.news", 5)),
     ]
@@ -881,7 +944,8 @@ def run_politics_bot():
         ("Reuters World", lambda: fetch_rss_with_fallback("Reuters World", "Wire Agency", [], "site:reuters.com/world when:2d", 6)),
         ("AP News World", lambda: fetch_rss_with_fallback("AP News World", "Wire Agency", [], "site:apnews.com/article (diplomacy OR military OR election OR government OR summit) when:2d", 5)),
         ("AFP", lambda: fetch_rss_with_fallback("AFP", "Wire Agency", [], '"AFP" world news OR diplomacy when:2d', 5)),
-        ("Foreign Affairs", lambda: fetch_rss_with_fallback("Foreign Affairs", "Geopolitics", ["https://www.foreignaffairs.com/rss.xml"], "site:foreignaffairs.com", 5)),
+        ("BBC World", lambda: fetch_rss_with_fallback("BBC World", "World News", ["https://feeds.bbci.co.uk/news/world/rss.xml"], "site:bbc.com/news/world", 6)),
+        ("Al Jazeera", lambda: fetch_rss_with_fallback("Al Jazeera", "World News", ["https://www.aljazeera.com/xml/rss/all.xml"], "site:aljazeera.com", 5)),
         ("ISW", lambda: fetch_rss_with_fallback("ISW", "Military & Conflict", [], "site:understandingwar.org", 4)),
         ("SIPRI", lambda: fetch_rss_with_fallback("SIPRI", "Arms & Security", ["https://www.sipri.org/rss/combined.xml"], "site:sipri.org", 4)),
         ("ICG (Crisis Group)", lambda: fetch_rss_with_fallback("ICG (Crisis Group)", "Conflict Watch", ["https://www.crisisgroup.org/rss.xml"], "site:crisisgroup.org", 4)),
@@ -892,7 +956,7 @@ def run_politics_bot():
         ("CFR", lambda: fetch_rss_with_fallback("CFR", "Foreign Relations", ["https://feeds.cfr.org/cfr_main"], "site:cfr.org", 5)),
         ("Ground News", fetch_politics_ground_news),
         ("AllSides", lambda: fetch_rss_with_fallback("AllSides", "Cross-Partisan", ["https://www.allsides.com/rss/news"], "site:allsides.com", 4)),
-        ("Nikkei Asia", lambda: fetch_rss_with_fallback("Nikkei Asia", "Asia Geopolitics", ["https://asia.nikkei.com/rss/feed/nar"], "site:asia.nikkei.com", 5)),
+        ("BBC Asia", lambda: fetch_rss_with_fallback("BBC Asia", "Asia Geopolitics", ["https://feeds.bbci.co.uk/news/world/asia/rss.xml"], "site:bbc.com/news/world/asia", 6)),
         ("SCMP", lambda: fetch_rss_with_fallback("SCMP", "China & Diplomacy", ["https://www.scmp.com/rss/91/feed"], "site:scmp.com", 6)),
     ]
     return execute_bot_tasks("politics", tasks, post=enrich_generic)
@@ -1727,6 +1791,8 @@ def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3, post=Non
             print(f"[WARN] {bot_name} 加料步骤出错（不影响报告）: {e}")
     for idx, it in enumerate(all_items, 1):
         it["id"] = idx
+        if is_paywalled(it.get("url", "")):
+            it["paywall"] = True
 
     elapsed = round(time.time() - t0, 2)
     payload = {
@@ -1756,6 +1822,8 @@ def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3, post=Non
             f"   - URL: {item['url']}\n"
             f"   - Time: {item['published']} | Summary: {item['summary']}"
         )
+        if item.get("paywall"):
+            md_lines.append("   - Paywall: 需付费订阅才能看全文")
         if item.get("rank"):
             md_lines.append(f"   - Rank: {item['source']} #{item['rank']}")
         if item.get("heat_text"):

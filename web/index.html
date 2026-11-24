@@ -247,6 +247,7 @@ a{color:var(--link);text-decoration:none}
 .art .snapbox th,.art .snapbox td{border:0;border-top:1px solid #222226;padding:8px 14px;text-align:left}
 .art .snapbox th{border-top:0;background:#141417;color:var(--sub);font-size:12px;font-weight:500}
 .snapbox td.up{color:#4ade80}.snapbox td.dn{color:#f87171}
+.rich .lock{font-size:12px;margin-left:4px;opacity:.85}
 .nomatch{padding:30px;text-align:center;color:var(--muted)}
 .terms{padding-left:20px}.terms li{margin:8px 0;line-height:1.8}
 @media (max-width:760px){
@@ -446,6 +447,7 @@ async function renderReader(){
 const CAT_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c"];
 const safeUrl = u => /^https?:\/\//i.test(u || "") ? u : "";
 const ext = (u, t) => safeUrl(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : t;
+const lock = x => x && x.paywall ? `<span class="lock" title="需要付费订阅才能看全文">🔒</span>` : "";
 function donutSvg(parts, total){
   const R = 44, C = 2 * Math.PI * R, gap = parts.length > 1 ? 2 : 0;
   let off = 0;
@@ -470,7 +472,7 @@ function richTable(R){
   return `<div class="tbl"><table><colgroup><col style="width:15%"><col style="width:28%"><col style="width:40%"><col style="width:17%"></colgroup>
     <thead><tr><th>信源</th><th>中文标题（点击直达）</th><th>简介</th><th>${R.bot === "chiangmai" || R.bot === "events" ? "时间地点与热度" : "热度与时间"}</th></tr></thead><tbody>` +
     rows.map(i => `<tr><td class="c-src"><span class="tag">${esc(i.source)}</span></td>
-      <td class="tt">${ext(i.url, esc(i.title_zh))}${i.title_en ? `<span class="en">${esc(i.title_en)}</span>` : ""}</td>
+      <td class="tt">${ext(i.url, esc(i.title_zh))}${lock(i)}${i.title_en ? `<span class="en">${esc(i.title_en)}</span>` : ""}</td>
       <td class="c-in">${esc(i.intro)}</td>
       <td class="c-ht">${i.when ? `<span class="ht wh">${esc(i.when)}</span>` : ""}<span class="ht">${esc(i.heat || (i.when ? "" : i.via) || "")}</span>${i.date ? `<span class="dt">${esc(i.date)}</span>` : ""}${safeUrl(i.discuss) ? `<a class="dl" href="${esc(i.discuss)}" target="_blank" rel="noopener">HN 讨论</a>` : ""}</td></tr>`).join("") +
     `</tbody></table></div>`;
@@ -487,7 +489,7 @@ function richHtml(R){
   const cats = R.categories.map((c, k) => ({ name:c, n: items.filter(i => i.category === c).length, color: CAT_COLORS[k % CAT_COLORS.length] })).filter(c => c.n);
   let h = `<p class="sum">${esc(R.summary)}</p>`;
   if(musts.length) h += `<h2>${esc((R.must_title || "今日 {n} 条必看").replace("{n}", musts.length))}</h2><ol class="must">` + musts.map(i =>
-    `<li><span class="src">【${esc(i.source)}】</span>${ext(i.url, esc(i.title_zh))}${i.when ? `<span class="wh">（${esc(i.when)}）</span>` : ""}<span class="ix">：${esc(i.must_text || i.intro)}</span></li>`).join("") + `</ol>`;
+    `<li><span class="src">【${esc(i.source)}】</span>${ext(i.url, esc(i.title_zh))}${lock(i)}${i.when ? `<span class="wh">（${esc(i.when)}）</span>` : ""}<span class="ix">：${esc(i.must_text || i.intro)}</span></li>`).join("") + `</ol>`;
   if((R.snapshot || []).length) h += `<h2>市场快照</h2><div class="snapbox"><table><thead><tr><th>资产</th><th>最新</th><th>涨跌</th></tr></thead><tbody>` +
     R.snapshot.map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.value)}</td><td class="${String(x.change).startsWith("-") ? "dn" : "up"}">${esc(x.change)}</td></tr>`).join("") + `</tbody></table></div>`;
   h += `<h2>信源入选统计</h2><div class="rcards"><div class="rbox"><div class="bars">` +
@@ -505,7 +507,7 @@ function richHtml(R){
     h += `<h2>${esc(rk.name)}</h2><div class="tbl"><table><colgroup><col style="width:9%"><col style="width:15%"><col style="width:30%"><col style="width:30%"><col style="width:16%"></colgroup>
       <thead><tr><th>排名</th><th>信源</th><th>中文标题（点击直达）</th><th>简介</th><th>热度</th></tr></thead><tbody>` +
       rk.rows.map(x => `<tr><td class="c-rk rk">${esc(x.rank)}</td><td class="c-src"><span class="tag">${esc(x.source)}</span></td>
-        <td class="tt">${ext(x.url, esc(x.title_zh || x.title_en))}${x.title_zh && x.title_en ? `<span class="en">${esc(x.title_en)}</span>` : ""}</td>
+        <td class="tt">${ext(x.url, esc(x.title_zh || x.title_en))}${lock(x)}${x.title_zh && x.title_en ? `<span class="en">${esc(x.title_en)}</span>` : ""}</td>
         <td class="c-in">${esc(x.brief)}</td>
         <td class="c-ht"><span class="ht">${esc(x.heat)}</span>${safeUrl(x.discuss) ? `<a class="dl" href="${esc(x.discuss)}" target="_blank" rel="noopener">HN 讨论</a>` : ""}</td></tr>`).join("") +
       `</tbody></table></div>`;
