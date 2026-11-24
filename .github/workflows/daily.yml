@@ -119,6 +119,8 @@ jobs:
 
       - name: 生成阅读器网站
         if: steps.pick.outputs.run == 'true'
+        env:
+          BOT_PROFILES: ${{ vars.BOT_PROFILES }}
         run: python build_site.py
 
       - uses: actions/upload-pages-artifact@v4

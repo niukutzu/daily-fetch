@@ -95,9 +95,29 @@ def main():
                           "items": top_items(body), "words": len(re.sub(r"\s", "", plain))})
 
     index.sort(key=lambda x: (x["date"], x["id"]), reverse=True)
+    bots = [{"id": b, "name": n, "icon": i, "ch": c, "color": col, "sched": sc, "title": t, "desc": d}
+            for b, n, i, c, col, sc, t, d in BOTS]
+    # 网站上改的名字和头像（仓库 Variables 里的 BOT_PROFILES）
+    try:
+        prof = json.loads(os.environ.get("BOT_PROFILES") or "{}")
+    except ValueError:
+        prof = {}
+    for bt in bots:
+        bt["def"] = {"name": bt["name"], "ch": bt["ch"], "color": bt["color"]}
+        p = prof.get(bt["id"]) if isinstance(prof, dict) else None
+        if not isinstance(p, dict):
+            continue
+        if str(p.get("name", "")).strip():
+            bt["name"] = str(p["name"]).strip()[:20]
+        if str(p.get("ch", "")).strip():
+            bt["ch"] = str(p["ch"]).strip()[:2]
+        if re.fullmatch(r"#[0-9a-fA-F]{6}", str(p.get("color", ""))):
+            bt["color"] = p["color"]
+        img = str(p.get("img", ""))
+        if re.fullmatch(r"data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{20,12000}", img):
+            bt["img"] = img
     data = {
-        "bots": [{"id": b, "name": n, "icon": i, "ch": c, "color": col, "sched": sc, "title": t, "desc": d}
-                 for b, n, i, c, col, sc, t, d in BOTS],
+        "bots": bots,
         "items": [{k: v for k, v in it.items() if k != "html"} for it in index],
         "built": datetime.now(CST).strftime("%Y-%m-%d %H:%M"),
     }
