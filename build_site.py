@@ -91,8 +91,12 @@ def main():
             html = render(body)
             with open(os.path.join(SITE, "r", f"{rid}.html"), "w", encoding="utf-8") as f:
                 f.write(html)
+            # 结构化报告（Grok 样式版面）：同名 .json
+            rich = os.path.exists(path[:-3] + ".json")
+            if rich:
+                shutil.copy(path[:-3] + ".json", os.path.join(SITE, "r", f"{rid}.json"))
             index.append({"id": rid, "bot": bot, "date": date, "title": title, "excerpt": excerpt, "html": html,
-                          "items": top_items(body), "words": len(re.sub(r"\s", "", plain))})
+                          "items": top_items(body), "words": len(re.sub(r"\s", "", plain)), "rich": rich})
 
     index.sort(key=lambda x: (x["date"], x["id"]), reverse=True)
     bots = [{"id": b, "name": n, "icon": i, "ch": c, "color": col, "sched": sc, "title": t, "desc": d}

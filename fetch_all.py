@@ -28,6 +28,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 CST = timezone(timedelta(hours=8))
 
+# 摘要长度：全球科技 Bot 运行时会调长（见 run_tech_bot）
+SUMMARY_LEN = 150
+
 # Polite per-domain rate limiter (1.5 ~ 3.5s random delay per domain)
 _domain_locks = {}
 _domain_last_req = {}
@@ -95,7 +98,7 @@ def parse_rss_text(xml_text: str, source_name: str, category: str, limit: int = 
     items = []
     seen_titles = set()
     for e in d.entries:
-        title = clean_text(getattr(e, "title", ""), max_len=180)
+        title = clean_text(getattr(e, "title", ""), max_len=260)
         if not title:
             continue
         if is_gnews and " - " in title:
@@ -122,7 +125,7 @@ def parse_rss_text(xml_text: str, source_name: str, category: str, limit: int = 
             if ext_a and "techmeme.com" not in ext_a["href"]:
                 link = ext_a["href"]
 
-        summary = clean_text(raw_desc, max_len=150)
+        summary = clean_text(raw_desc, max_len=SUMMARY_LEN)
         if is_gnews and norm_t in re.sub(r"[^a-z0-9]+", "", summary.lower()):
             summary = f"Via Google News RSS index ({source_name})"
 
@@ -183,18 +186,24 @@ def fetch_tech_github():
         repo = re.sub(r"\s+", "", h2.get_text(strip=True))
         href = "https://github.com/" + repo.lstrip("/")
         desc_el = row.select_one("p")
-        desc = clean_text(desc_el.get_text(" ", strip=True) if desc_el else "", 110)
+        desc = clean_text(desc_el.get_text(" ", strip=True) if desc_el else "", 300)
         lang_el = row.select_one("[itemprop='programmingLanguage']")
         lang = lang_el.get_text(strip=True) if lang_el else "Code"
         stars_today_el = row.select_one("span.d-inline-block.float-sm-right")
         stars_today = stars_today_el.get_text(" ", strip=True) if stars_today_el else ""
+        total_el = row.select_one("a[href$='/stargazers']")
+        total = total_el.get_text(strip=True) if total_el else ""
+        m_today = re.search(r"([\d,]+)", stars_today)
         items.append({
+            "rank": len(items) + 1,
+            "heat": {"stars_today": int(m_today.group(1).replace(",", "")) if m_today else None,
+                     "stars_total": total, "lang": lang},
             "source": "GitHub Trending",
             "category": "Open Source",
             "title": repo,
             "url": href,
             "published": datetime.now(CST).strftime("%Y-%m-%d"),
-            "summary": clean_text(f"[{lang} | {stars_today}] {desc}", 150),
+            "summary": clean_text(f"[{lang} | {stars_today} | 总 {total} stars] {desc}", 400),
         })
     return items, "L2_CURL_CFFI_HTML", url
 
@@ -210,6 +219,9 @@ def fetch_tech_hn():
         pts = hit.get("points", 0)
         cmts = hit.get("num_comments", 0)
         items.append({
+            "rank": len(items) + 1,
+            "heat": {"hn_points": pts, "hn_comments": cmts},
+            "discuss": f"https://news.ycombinator.com/item?id={oid}",
             "source": "Hacker News",
             "category": "Tech Community",
             "title": clean_text(hit.get("title", ""), 160),
@@ -231,14 +243,15 @@ def fetch_tech_hf():
             pid = paper.get("id", "")
             title = clean_text(p.get("title") or paper.get("title", ""), 160)
             upvotes = paper.get("upvotes", 0)
-            summary = clean_text(paper.get("summary", ""), 120)
+            summary = clean_text(paper.get("summary", ""), 450)
             items.append({
                 "source": "Hugging Face",
                 "category": "AI Papers & Models",
                 "title": f"[Paper] {title}",
                 "url": f"https://huggingface.co/papers/{pid}",
                 "published": str(p.get("publishedAt", ""))[:19],
-                "summary": clean_text(f"👍 {upvotes} upvotes | {summary}", 150),
+                "heat": {"hf_upvotes": upvotes},
+                "summary": clean_text(f"👍 {upvotes} upvotes | {summary}", 480),
             })
     # 2. Trending Models/Spaces
     u2 = "https://huggingface.co/api/trending"
@@ -258,6 +271,7 @@ def fetch_tech_hf():
                 "title": f"[{rtype.capitalize()}] {rid}",
                 "url": f"https://huggingface.co/{prefix}{rid}",
                 "published": str(rd.get("lastModified", ""))[:19],
+                "heat": {"hf_likes": likes, "hf_downloads": downloads},
                 "summary": f"Trending {rtype}: ❤️ {likes} likes, ⬇️ {downloads} downloads",
             })
     return items, "L1_OFFICIAL_API", u1
@@ -290,14 +304,16 @@ def fetch_tech_semianalysis():
     r = polite_get(url, referer="https://newsletter.semianalysis.com/")
     if r.status_code == 200:
         items = []
-        for post in r.json()[:5]:
+        data = r.json()
+        posts = data.get("posts", []) if isinstance(data, dict) else data
+        for post in posts[:5]:
             items.append({
                 "source": "SemiAnalysis",
                 "category": "Semiconductors & AI Infra",
                 "title": clean_text(post.get("title", ""), 160),
                 "url": post.get("canonical_url") or f"https://newsletter.semianalysis.com/p/{post.get('slug','')}",
                 "published": str(post.get("post_date", ""))[:19],
-                "summary": clean_text(post.get("subtitle") or post.get("description", ""), 150),
+                "summary": clean_text(post.get("subtitle") or post.get("description", ""), 400),
             })
         if items:
             return items, "L1_SUBSTACK_API", url
@@ -323,7 +339,7 @@ def fetch_tech_the_batch():
                 "title": clean_text(h.get_text(" ", strip=True), 160),
                 "url": href,
                 "published": datetime.now(CST).strftime("%Y-%m-%d"),
-                "summary": clean_text(p.get_text(" ", strip=True) if p else "DeepLearning.AI Weekly Issue by Andrew Ng", 150),
+                "summary": clean_text(p.get_text(" ", strip=True) if p else "DeepLearning.AI Weekly Issue by Andrew Ng", 400),
             })
     if items:
         return items, "L2_CURL_CFFI_HTML", url
@@ -363,18 +379,186 @@ def fetch_tech_tldr():
                     "title": title,
                     "url": href,
                     "published": datetime.now(CST).strftime("%Y-%m-%d"),
-                    "summary": clean_text(desc, 150),
+                    "summary": clean_text(desc, 450),
                 })
-                if len([x for x in items if x["category"] == f"TLDR {sub.upper()}"]) >= 4:
+                if len([x for x in items if x["category"] == f"TLDR {sub.upper()}"]) >= 6:
                     break
     return items, "L1_OFFICIAL_API", "https://tldr.tech/api/latest/tech"
+
+
+# ------------------------------------------------------------------------------
+# 全球科技加料：真实信源、热度文字、原文开头一段、GitHub README 简介
+# ------------------------------------------------------------------------------
+PUBLISHERS = {
+    "cnbc.com": "CNBC", "bloomberg.com": "Bloomberg", "wsj.com": "Wall Street Journal", "nytimes.com": "New York Times",
+    "ft.com": "Financial Times", "axios.com": "Axios", "wired.com": "Wired", "theverge.com": "The Verge",
+    "techcrunch.com": "TechCrunch", "zdnet.com": "ZDNET", "reuters.com": "Reuters", "semafor.com": "Semafor",
+    "electrek.co": "Electrek", "arstechnica.com": "Ars Technica", "technologyreview.com": "MIT Tech Review",
+    "github.com": "GitHub", "huggingface.co": "Hugging Face", "twitter.com": "X", "x.com": "X",
+    "openai.com": "OpenAI", "anthropic.com": "Anthropic", "quantamagazine.org": "Quanta Magazine",
+    "theinformation.com": "The Information", "9to5mac.com": "9to5Mac", "9to5google.com": "9to5Google",
+    "macrumors.com": "MacRumors", "engadget.com": "Engadget", "businessinsider.com": "Business Insider",
+    "cnn.com": "CNN", "bbc.com": "BBC", "bbc.co.uk": "BBC", "theguardian.com": "The Guardian",
+    "washingtonpost.com": "Washington Post", "simonwillison.net": "Simon Willison", "latent.space": "Latent Space",
+    "deeplearning.ai": "The Batch", "producthunt.com": "Product Hunt", "yankodesign.com": "Yanko Design",
+    "metr.org": "METR", "z.ai": "Z.ai", "thinkingmachines.ai": "Thinking Machines", "blog.google": "Google",
+    "googleblog.com": "Google", "ai.meta.com": "Meta", "about.fb.com": "Meta", "microsoft.com": "Microsoft",
+    "apple.com": "Apple", "nvidia.com": "Nvidia", "nvidianews.nvidia.com": "Nvidia", "tomshardware.com": "Tom's Hardware",
+    "theregister.com": "The Register", "politico.eu": "Politico", "politico.com": "Politico", "404media.co": "404 Media",
+    "platformer.news": "Platformer", "stratechery.com": "Stratechery", "semianalysis.com": "SemiAnalysis",
+    "importai.substack.com": "Import AI", "artificialanalysis.ai": "Artificial Analysis", "youtube.com": "YouTube",
+    "economist.com": "The Economist", "fortune.com": "Fortune", "forbes.com": "Forbes", "venturebeat.com": "VentureBeat",
+}
+NO_LEAD = ("github.com", "huggingface.co", "artificialanalysis.ai", "news.google.com", "twitter.com", "x.com", "youtube.com")
+
+
+def _host(url: str) -> str:
+    h = urlparse(url or "").netloc.lower()
+    return h[4:] if h.startswith("www.") else h
+
+
+def publisher_of(url: str, fallback: str) -> str:
+    h = _host(url)
+    if not h:
+        return fallback
+    for dom, name in PUBLISHERS.items():
+        if h == dom or h.endswith("." + dom):
+            return name
+    parts = h.split(".")
+    label = parts[-2] if len(parts) >= 2 else parts[0]
+    if label in ("co", "com", "org", "net") and len(parts) >= 3:
+        label = parts[-3]
+    return label[:1].upper() + label[1:]
+
+
+def strip_tracking(url: str) -> str:
+    if "utm_" not in url and "reflink=" not in url:
+        return url
+    base, _, rest = url.partition("?")
+    frag = ""
+    if "#" in rest:
+        rest, frag = rest.split("#", 1)
+        frag = "#" + frag
+    keep = [kv for kv in rest.split("&") if kv and not re.match(r"(utm_\w+|reflink|st)=", kv)]
+    return base + ("?" + "&".join(keep) if keep else "") + frag
+
+
+def fetch_lead(url: str, max_len: int = 700) -> str:
+    """抓原文：取 og:description + 正文前两段（拿不到就返回空）。"""
+    try:
+        r = polite_get(url, timeout=12)
+        if r.status_code != 200 or "html" not in r.headers.get("content-type", "html"):
+            return ""
+        soup = BeautifulSoup(r.text[:600000], "lxml")
+        parts = []
+        for sel in ("meta[property='og:description']", "meta[name='description']", "meta[name='twitter:description']"):
+            m = soup.select_one(sel)
+            if m and m.get("content"):
+                parts.append(clean_text(m["content"], 400))
+                break
+        root = soup.find("article") or soup.find("main") or soup.body or soup
+        n = 0
+        for p in root.find_all("p"):
+            t = clean_text(p.get_text(" ", strip=True), 450)
+            if len(t) < 70 or any(t[:60] in x for x in parts) or re.search(r"cookie|subscribe|sign up|newsletter|javascript", t, re.I):
+                continue
+            parts.append(t)
+            n += 1
+            if n >= 2:
+                break
+        return clean_text(" ".join(parts), max_len)
+    except Exception:
+        return ""
+
+
+def fetch_readme_intro(repo: str, max_len: int = 600) -> str:
+    """GitHub 项目 README 的开头几段文字（去掉徽章、图片、代码）。"""
+    for branch in ("HEAD",):
+        try:
+            r = polite_get(f"https://raw.githubusercontent.com/{repo}/{branch}/README.md", referer="https://github.com/", timeout=12)
+            if r.status_code != 200:
+                continue
+            txt = re.sub(r"```.*?```", " ", r.text[:40000], flags=re.S)
+            txt = re.sub(r"<[^>]+>", " ", txt)
+            txt = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", txt)
+            txt = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", txt)
+            keep = []
+            for line in txt.splitlines():
+                t = line.strip().strip("#>*-|_ ").strip()
+                if len(t) < 30 or t.count("|") > 2 or re.match(r"^(table of contents|contents|license|install)", t, re.I):
+                    continue
+                keep.append(t)
+                if sum(len(k) for k in keep) > max_len:
+                    break
+            return clean_text(" ".join(keep), max_len)
+        except Exception:
+            pass
+    return ""
+
+
+def heat_text(it: dict) -> str:
+    h = it.get("heat") or {}
+    if "hn_points" in h:
+        return f"HN {h['hn_points']} 分 / {h['hn_comments']} 评"
+    if h.get("stars_today") is not None:
+        return f"今日 +{h['stars_today']} stars（总 {h.get('stars_total') or '?'}）"
+    if "hf_likes" in h:
+        return f"HF {h['hf_likes']} 喜欢 / {h['hf_downloads']} 下载"
+    if "hf_upvotes" in h:
+        return f"HF 论文 {h['hf_upvotes']} 赞"
+    if it.get("source") == "Techmeme":
+        return "Techmeme 头条"
+    return ""
+
+
+def enrich_tech(items: list):
+    t0 = time.time()
+    for it in items:
+        it["url"] = strip_tracking(it.get("url", ""))
+        if it["source"] == "Techmeme":
+            m = re.search(r"\s*\(([^()]{2,60})\)\s*$", it["title"])
+            if m:
+                it["publisher"] = m.group(1).split("/")[-1].strip()
+                it["title"] = it["title"][: m.start()].strip()
+            it["summary"] = re.sub(r"^[^:]{2,60}\s:\s", "", it["summary"])
+        if it["source"].startswith("TLDR"):
+            it["title"] = re.sub(r"\s*\(\d+ minute read\)\s*$", "", it["title"])
+        it.setdefault("publisher", publisher_of(it["url"], it["source"]) if it["source"] in ("Hacker News", "Techmeme", "TLDR Tech / AI") else it["source"])
+        it["heat_text"] = heat_text(it)
+
+    # 同一链接在 HN 也出现：给其他条目补上 HN 热度
+    hn = {re.sub(r"[?#].*$", "", x["url"]).rstrip("/"): x for x in items if x["source"] == "Hacker News"}
+    for it in items:
+        k = re.sub(r"[?#].*$", "", it["url"]).rstrip("/")
+        if it["source"] != "Hacker News" and k in hn:
+            it["heat_text"] = (it["heat_text"] + "；" if it["heat_text"] else "") + hn[k]["heat_text"]
+
+    jobs = []
+    for it in items:
+        if it["source"] == "GitHub Trending":
+            jobs.append((it, lambda u=it["title"]: fetch_readme_intro(u)))
+        elif _host(it["url"]) and not any(_host(it["url"]).endswith(d) for d in NO_LEAD) and (
+                it["source"] in ("Hacker News", "Techmeme", "TLDR Tech / AI", "Product Hunt") or len(it.get("summary", "")) < 120):
+            jobs.append((it, lambda u=it["url"]: fetch_lead(u)))
+    jobs = jobs[:45]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futs = {pool.submit(fn): it for it, fn in jobs}
+        for f in as_completed(futs):
+            try:
+                lead = f.result()
+            except Exception:
+                lead = ""
+            if lead:
+                futs[f]["lead"] = lead
+    got = sum(1 for it, _ in jobs if it.get("lead"))
+    print(f"[TECH] 原文开头：{got}/{len(jobs)} 条拿到，用时 {round(time.time() - t0, 1)}s")
 
 
 def run_tech_bot():
     tasks = [
         ("GitHub Trending", fetch_tech_github),
         ("Hacker News", fetch_tech_hn),
-        ("Techmeme", lambda: fetch_rss_with_fallback("Techmeme", "Tech News", ["https://www.techmeme.com/feed.xml"], "site:techmeme.com", 6)),
+        ("Techmeme", lambda: fetch_rss_with_fallback("Techmeme", "Tech News", ["https://www.techmeme.com/feed.xml"], "site:techmeme.com", 15)),
         ("Hugging Face", fetch_tech_hf),
         ("Artificial Analysis", fetch_tech_artificial_analysis),
         ("Ars Technica", lambda: fetch_rss_with_fallback("Ars Technica", "Tech Journalism", ["https://feeds.arstechnica.com/arstechnica/index"], "site:arstechnica.com", 5)),
@@ -389,7 +573,12 @@ def run_tech_bot():
         ("Product Hunt", lambda: fetch_rss_with_fallback("Product Hunt", "New Products", ["https://www.producthunt.com/feed"], "site:producthunt.com", 5)),
         ("Yanko Design", lambda: fetch_rss_with_fallback("Yanko Design", "Industrial Design", ["https://www.yankodesign.com/feed/"], "site:yankodesign.com", 4)),
     ]
-    return execute_bot_tasks("tech", tasks)
+    global SUMMARY_LEN
+    old_len, SUMMARY_LEN = SUMMARY_LEN, 450
+    try:
+        return execute_bot_tasks("tech", tasks, post=enrich_tech)
+    finally:
+        SUMMARY_LEN = old_len
 
 
 # ==============================================================================
@@ -1420,7 +1609,7 @@ def run_chiangmai_bot():
 # ==============================================================================
 # EXECUTOR & OUTPUT GENERATOR
 # ==============================================================================
-def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3):
+def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3, post=None):
     t0 = time.time()
     all_items = []
     source_stats = []
@@ -1431,6 +1620,8 @@ def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3):
             src_name = future_map[fut]
             try:
                 items, layer, endpoint = fut.result()
+                for it in items:
+                    it.setdefault("task", src_name)
                 source_stats.append({
                     "source": src_name,
                     "status": "ok" if items else "empty",
@@ -1451,6 +1642,7 @@ def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3):
     # Preserve task order
     order_map = {name: i for i, (name, _) in enumerate(tasks)}
     source_stats.sort(key=lambda x: order_map.get(x["source"], 999))
+    all_items.sort(key=lambda it: order_map.get(it.get("task"), 999))  # 稳定顺序（sort 不打乱同一来源内部顺序）
 
     # Merge built-in tool supplements (x / WebSearch) if present
     supp_file = os.path.join( os.path.dirname(__file__), "builtin_supplements.json")
@@ -1478,6 +1670,14 @@ def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3):
         except Exception as e:
             print(f"[WARN] Failed loading builtin_supplements.json: {e}")
 
+    if post:
+        try:
+            post(all_items)
+        except Exception as e:
+            print(f"[WARN] {bot_name} 加料步骤出错（不影响报告）: {e}")
+    for idx, it in enumerate(all_items, 1):
+        it["id"] = idx
+
     elapsed = round(time.time() - t0, 2)
     payload = {
         "bot": bot_name,
@@ -1500,11 +1700,18 @@ def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3):
         "",
     ]
     for idx, item in enumerate(all_items, 1):
+        pub = f" | Publisher: {item['publisher']}" if item.get("publisher") and item["publisher"] != item["source"] else ""
         md_lines.append(
-            f"{idx}. **[{item['source']} | {item['category']}]** {item['title']}\n"
+            f"{idx}. **[{item['source']} | {item['category']}{pub}]** {item['title']}\n"
             f"   - URL: {item['url']}\n"
             f"   - Time: {item['published']} | Summary: {item['summary']}"
         )
+        if item.get("rank"):
+            md_lines.append(f"   - Rank: {item['source']} #{item['rank']}")
+        if item.get("heat_text"):
+            md_lines.append(f"   - Heat: {item['heat_text']}")
+        if item.get("lead"):
+            md_lines.append(f"   - Article lead: {item['lead']}")
 
     md_path = os.path.join(OUTPUT_DIR, f"{bot_name}_brief.md")
     with open(md_path, "w", encoding="utf-8") as f:
