@@ -15,6 +15,7 @@ AI 接口用 OpenAI 兼容格式，3 个值都从环境变量（GitHub Secrets�
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -58,8 +59,14 @@ def call_llm(bot: str, system: str, user: str) -> str:
         data=body,
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=300) as r:
-        data = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            data = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "ignore")[:800]
+        print(f"[LLM 出错] HTTP {e.code}，接口返回：{detail}")
+        print(f"[提示] 请求地址结尾是 /chat/completions，地址共 {len(base)} 个字符，模型 = {model}")
+        raise
     usage = data.get("usage", {})
     print(f"[LLM] model={model} prompt_tokens={usage.get('prompt_tokens')} completion_tokens={usage.get('completion_tokens')}")
     return data["choices"][0]["message"]["content"].strip()
