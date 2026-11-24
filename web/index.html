@@ -127,7 +127,7 @@ a{color:var(--link);text-decoration:none}
 .card .cs{font-size:13px;color:var(--muted)}
 .kv{display:flex;flex-direction:column;gap:8px;font-size:14px;padding:14px 16px;border-radius:16px;background:var(--card);border:1px solid #26262b}
 .kv div{display:flex;justify-content:space-between;gap:10px}
-.kv span:first-child{color:var(--sub)}
+.kv span:first-child{color:var(--sub);flex:none;white-space:nowrap}
 .tog{width:50px;height:30px;flex:none;border-radius:15px;position:relative;background:#3f3f46;transition:background .2s}
 .tog::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}
 .tog.on{background:var(--green)}.tog.on::after{left:23px}
@@ -169,20 +169,27 @@ a{color:var(--link);text-decoration:none}
 .nm-edit input{flex:1;min-width:0;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--blue);background:#111113;color:var(--text);font:inherit;font-size:18px;font-weight:600;text-align:center;outline:0}
 .sq{width:42px;height:42px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center}
 .sq.ok{background:var(--blue2);color:#fff}.sq.no{background:#222228;color:var(--sub)}
-.avmenu{margin:14px 0 4px;padding:6px;border-radius:16px;background:var(--card);border:1px solid #2a2a30;text-align:left;box-shadow:0 12px 30px rgba(0,0,0,.35)}
-.avmenu .mi{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border-radius:10px;font-size:14px;cursor:pointer}
-.avmenu .mi:hover{background:#232328}
-.avmenu .mi svg{color:var(--sub);flex:none}
-.avmenu .mi input[type=file]{display:none}
-.avmenu .sub{padding:4px 12px 12px}
-.avmenu .sub .lb{font-size:12px;color:var(--muted);margin:6px 0 8px}
-.avmenu .chrow{display:flex;gap:8px;align-items:center}
-.avmenu .chrow input{width:72px;height:38px;border-radius:10px;border:1px solid var(--line2);background:#111113;color:var(--text);font:inherit;font-size:16px;text-align:center}
-.avmenu .chrow button{height:38px;padding:0 14px;border-radius:10px;background:#26262c;font-size:13px}
-.sws{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.sw{width:100%;aspect-ratio:1;border-radius:50%;border:2px solid transparent!important}
-.sw.on{border-color:#fff!important;box-shadow:0 0 0 2px var(--side) inset}
-.avmenu hr{border:0;border-top:1px solid #26262b;margin:4px 6px}
+.av.blob{background:#1c1c20!important}
+.av.blob svg{width:86%;height:86%}
+.avpick{margin:14px 0 4px;padding:12px;border-radius:16px;background:var(--card);border:1px solid #2a2a30;text-align:left;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.ptabs{display:flex;gap:4px;margin-bottom:10px}
+.ptabs button{height:34px;padding:0 14px;border-radius:10px;color:var(--muted);font-size:14px}
+.ptabs button.on{background:#26262c;color:var(--text)}
+.ptabs #avReset{font-size:13px}
+.shapes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.shp{aspect-ratio:1;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:4px}
+.shp:hover{background:#232328}.shp.on{background:#2c2c33;box-shadow:0 0 0 2px var(--blue) inset}
+.cols{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}
+.col{width:30px;height:30px;border-radius:50%;border:2px solid transparent!important}
+.col.on{box-shadow:0 0 0 2px var(--card),0 0 0 4px #fff}
+.upl{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0 6px}
+.upl .av.big{width:96px;height:96px}
+.upl-ph{width:96px;height:96px;border-radius:50%;border:1px dashed #3a3a42;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.up{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--line2);cursor:pointer;font-size:14px}
+.up input{display:none}
+.pacts{display:flex;gap:10px;margin-top:14px}
+.pacts button{flex:1;height:44px;border-radius:12px;text-align:center}
+.pacts button:disabled{opacity:.45;cursor:default}
 
 /* 手机：一次一层 */
 @media (max-width:899px){
@@ -258,7 +265,9 @@ const bot = id => S.data.bots.find(b => b.id === id);
 const reps = id => S.data.items.filter(x => x.bot === id).sort((a,b) => a.date < b.date ? 1 : -1); // 新→旧
 const latest = id => reps(id)[0];
 const isPaused = id => !!(S.paused && S.paused.list.includes(id));
-const av = (b, cls="") => `<span class="av ${cls}" style="background:${esc(b.color)}">${b.img && /^data:image\//.test(b.img) ? `<img src="${esc(b.img)}" alt="">` : esc(b.ch)}</span>`;
+const av = (b, cls="") => b.img && /^data:image\//.test(b.img) ? `<span class="av ${cls}"><img src="${esc(b.img)}" alt=""></span>`
+  : b.shape && SHAPE_IDS.includes(b.shape) ? `<span class="av blob ${cls}">${blobSvg(b.shape, b.color)}</span>`
+  : `<span class="av ${cls}" style="background:${esc(b.color)}">${esc(b.ch)}</span>`;
 const mins = r => Math.max(1, Math.round((r.words || 1500) / 500));
 
 /* ---------- 导航（手机返回键也能用） ---------- */
@@ -372,6 +381,31 @@ async function gh(method, path, body){
 }
 
 /* ---------- 改名、换头像（存在仓库 Variables 的 BOT_PROFILES） ---------- */
+/* ---------- 内置头像：彩色小怪物（形状 + 颜色） ---------- */
+const PALETTE = ["#f5f5f4","#a16207","#ef4444","#f97316","#f59e0b","#22c55e","#14b8a6","#3b82f6","#8b5cf6","#ec4899","#71717a"];
+const SHAPES = [
+  { id:"c" }, { id:"f5", n:5, a:.16 }, { id:"sq", n:4, a:.08, r:45 }, { id:"st4", n:4, a:.3, r:20 },
+  { id:"cl7", n:7, a:.07 }, { id:"t3", n:3, a:.17, r:-90 }, { id:"f6", n:6, a:.12, r:15 }, { id:"d" },
+  { id:"p" }, { id:"hx", n:6, a:.05 }, { id:"sp8", n:8, a:.17, r:10 }, { id:"f9", n:9, a:.08 },
+];
+const SHAPE_IDS = SHAPES.map(s => s.id);
+function shapePath(s){
+  if(s.id === "c") return '<circle cx="50" cy="52" r="34"/>';
+  if(s.id === "p") return '<rect x="14" y="30" width="72" height="46" rx="23" transform="rotate(-12 50 53)"/>';
+  if(s.id === "d") return '<path d="M48 14 C66 30 82 44 82 60 a32 32 0 0 1 -64 0 C18 44 32 30 48 14Z"/>';
+  const pts = [];
+  for(let i = 0; i < 144; i++){
+    const t = i / 144 * Math.PI * 2, r = 34 * (1 + s.a * Math.cos(s.n * (t + (s.r || 0) * Math.PI / 180)));
+    pts.push((50 + r * Math.cos(t)).toFixed(1) + " " + (52 + r * Math.sin(t)).toFixed(1));
+  }
+  return `<path d="M${pts.join("L")}Z"/>`;
+}
+function blobSvg(id, color){
+  const s = SHAPES.find(x => x.id === id) || SHAPES[0];
+  return `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><g fill="${esc(color)}">${shapePath(s)}</g>
+    <g fill="#1c1917"><rect x="50" y="38" width="6" height="13" rx="3"/><rect x="62" y="38" width="6" height="13" rx="3"/></g></svg>`;
+}
+
 const COLORS = ["#2563eb","#0f766e","#b45309","#c2410c","#7c3aed","#15803d","#db2777","#9333ea","#0369a1","#dc2626","#ca8a04","#3f3f46"];
 const okImg = s => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s || "");
 const DEFAULTS = {};
@@ -382,6 +416,7 @@ function applyProfiles(obj){
     b.name = (p.name || "").trim() || d.name; b.ch = (p.ch || "").trim() || d.ch;
     b.color = /^#[0-9a-fA-F]{6}$/.test(p.color || "") ? p.color : d.color;
     b.img = okImg(p.img) ? p.img : (p.img === "" ? "" : d.img);
+    b.shape = SHAPE_IDS.includes(p.shape) ? p.shape : "";
   });
 }
 async function loadProfiles(){
@@ -415,7 +450,8 @@ async function saveProfile(b){
     if(!S.profiles) await loadProfiles();
     if(!S.profiles) throw new Error("读取设置失败，请检查钥匙");
     const obj = Object.assign({}, S.profiles.obj);
-    const p = { name: d.name.trim(), ch: d.ch.trim(), color: d.color, img: d.img };
+    const p = { name: d.name.trim(), ch: d.ch.trim(), color: d.color, img: d.img, shape: d.shape || "" };
+    if(!p.shape) delete p.shape;
     if(p.name === def.name) delete p.name; if(p.ch === def.ch) delete p.ch; if(p.color === def.color) delete p.color;
     if(p.img === (def.img || "")) delete p.img;
     if(Object.keys(p).length) obj[b.id] = p; else delete obj[b.id];
@@ -438,36 +474,45 @@ async function saveProfile(b){
 const needKey = () => { S.tokenForm = true; S.note = "改名、换头像需要先设置钥匙（只做一次）"; S.noteErr = false; S.tab = "feed"; S.avMenu = false; S.nameEdit = false; renderPanel(); };
 function quickSave(b, patch){
   if(!tok.get()) return needKey();
-  S.draft = Object.assign({ name:b.name, ch:b.ch, color:b.color, img:b.img || "" }, patch);
+  S.draft = Object.assign({ name:b.name, ch:b.ch, color:b.color, img:b.img || "", shape:b.shape || "" }, patch);
   saveProfile(b);
 }
 function profHtml(b){
-  const cam = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
-  const pen = '<svg class="pen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const ic = d => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${d}</svg>`;
+  const pen2 = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
   const name = S.nameEdit
     ? `<div class="nm-edit"><input id="nmIn" maxlength="20" value="${esc(b.name)}" aria-label="新名字">
         <button class="sq ok" id="nmOk" aria-label="保存">${ic('<path d="M5 12l5 5L20 7"/>')}</button>
         <button class="sq no" id="nmNo" aria-label="取消">${ic('<path d="M6 6l12 12M18 6L6 18"/>')}</button></div>`
     : `<button class="nm-btn" id="nmBtn" aria-label="编辑名字"><span class="t">${esc(b.name)}</span></button>`;
-  const menu = !S.avMenu ? "" : `<div class="avmenu" id="avMenu">
-      <label class="mi">${ic('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>')}从相册 / 电脑选图片<input type="file" id="avFile" accept="image/*"></label>
-      ${b.img ? `<button class="mi" id="avNoImg">${ic('<circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/>')}去掉图片，改用文字头像</button>` : ""}
-      <hr>
-      <div class="sub"><div class="lb">文字头像${b.img ? "（去掉图片后显示）" : ""}</div>
-        <div class="chrow"><input id="avCh" maxlength="2" value="${esc(b.ch)}" aria-label="头像上的字"><button id="avChOk">换字</button></div>
-        <div class="lb" style="margin-top:12px">底色</div>
-        <div class="sws">${COLORS.map(c => `<button class="sw ${c === b.color ? "on" : ""}" data-c="${c}" style="background:${c}" aria-label="底色 ${c}"></button>`).join("")}</div></div>
-      <hr>
-      <button class="mi" id="avReset">${ic('<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>')}恢复默认名字和头像</button>
+  let picker = "";
+  if(S.avMenu){
+    const d = S.avDraft;
+    const prevBot = d.mode === "img" ? Object.assign({}, b, { img:d.img, shape:"" }) : Object.assign({}, b, { img:"", shape:d.shape, color:d.color });
+    picker = `<div class="avpick">
+      <div class="ptabs"><button class="${d.mode === "shape" ? "on" : ""}" data-m="shape">内置</button><button class="${d.mode === "img" ? "on" : ""}" data-m="img">上传</button>
+        <span style="flex:1"></span><button id="avReset">恢复默认</button></div>
+      ${d.mode === "shape" ? `
+        <div class="shapes">${SHAPES.map(s => `<button class="shp ${s.id === d.shape ? "on" : ""}" data-s="${s.id}" aria-label="头像形状 ${s.id}">${blobSvg(s.id, d.color)}</button>`).join("")}</div>
+        <div class="cols">${PALETTE.map(c => `<button class="col ${c === d.color ? "on" : ""}" data-c="${c}" style="background:${c}" aria-label="颜色 ${c}"></button>`).join("")}</div>`
+      : `<div class="upl">${d.img ? `<span class="av big">${`<img src="${esc(d.img)}" alt="">`}</span>` : `<span class="upl-ph">${ic('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>')}</span>`}
+          <label class="up">${d.img ? "换一张" : "从相册 / 电脑选图片"}<input type="file" id="avFile" accept="image/*"></label>
+          <div class="cs" style="font-size:12px">图片会自动裁成圆形</div></div>`}
+      <div class="pacts"><button class="btn-ghost" id="avCancel">取消</button>
+        <button class="btn-pri" id="avOk" ${d.mode === "img" && !d.img ? "disabled" : ""}>设置头像</button></div>
     </div>`;
-  const pen2 = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
-  return `<div class="prof"><button class="avwrap ${S.avMenu ? "on" : ""}" id="avBtn" aria-label="编辑头像">${av(b)}
+    return `<div class="prof"><div class="avwrap" style="cursor:default">${av(prevBot)}</div>${picker}<div class="nmrow">${name}</div></div>`;
+  }
+  return `<div class="prof"><button class="avwrap" id="avBtn" aria-label="编辑头像">${av(b)}
       <span class="ovl">${pen2}</span><span class="tip">编辑头像</span></button>
-    ${menu}<div class="nmrow">${name}</div></div>`;
+    <div class="nmrow">${name}</div></div>`;
 }
 function bindProf(b){
-  $("avBtn").onclick = () => { if(!tok.get()) return needKey(); S.avMenu = !S.avMenu; S.nameEdit = false; renderPanel(); };
+  if($("avBtn")) $("avBtn").onclick = () => {
+    if(!tok.get()) return needKey();
+    S.avDraft = { mode: b.img ? "img" : "shape", shape: b.shape || SHAPES[0].id, color: PALETTE.includes(b.color) && b.shape ? b.color : PALETTE[2], img: b.img || "" };
+    S.avMenu = true; S.nameEdit = false; renderPanel();
+  };
   if($("nmBtn")) $("nmBtn").onclick = () => { if(!tok.get()) return needKey(); S.nameEdit = true; S.avMenu = false; renderPanel(); const i = $("nmIn"); i.focus(); i.select(); };
   if($("nmIn")){
     const done = () => { const v = $("nmIn").value.trim(); S.nameEdit = false; if(v && v !== b.name) quickSave(b, { name:v }); else renderPanel(); };
@@ -475,13 +520,16 @@ function bindProf(b){
     $("nmIn").onkeydown = e => { if(e.key === "Enter") done(); if(e.key === "Escape"){ S.nameEdit = false; renderPanel(); } };
   }
   if(!S.avMenu) return;
-  $("avFile").onchange = async e => { const f = e.target.files[0]; if(!f) return;
-    try{ const img = await shrinkImage(f); S.avMenu = false; quickSave(b, { img }); }catch(err){ S.note = err.message; S.noteErr = true; renderPanel(); } };
-  if($("avNoImg")) $("avNoImg").onclick = () => quickSave(b, { img:"" });
-  $("avChOk").onclick = () => { const v = $("avCh").value.trim(); if(v) quickSave(b, { ch:v }); };
-  $("avCh").onkeydown = e => { if(e.key === "Enter") $("avChOk").click(); };
-  document.querySelectorAll(".avmenu .sw").forEach(x => x.onclick = () => quickSave(b, { color:x.dataset.c }));
-  $("avReset").onclick = () => { const d = DEFAULTS[b.id]; S.avMenu = false; quickSave(b, { name:d.name, ch:d.ch, color:d.color, img:d.img || "" }); };
+  const d = S.avDraft;
+  document.querySelectorAll(".ptabs [data-m]").forEach(x => x.onclick = () => { d.mode = x.dataset.m; renderPanel(); });
+  document.querySelectorAll(".shp").forEach(x => x.onclick = () => { d.shape = x.dataset.s; renderPanel(); });
+  document.querySelectorAll(".col").forEach(x => x.onclick = () => { d.color = x.dataset.c; renderPanel(); });
+  if($("avFile")) $("avFile").onchange = async e => { const f = e.target.files[0]; if(!f) return;
+    try{ d.img = await shrinkImage(f); }catch(err){ S.note = err.message; S.noteErr = true; } renderPanel(); };
+  $("avCancel").onclick = () => { S.avMenu = false; renderPanel(); };
+  $("avReset").onclick = () => { const df = DEFAULTS[b.id]; S.avMenu = false; quickSave(b, { ch:df.ch, color:df.color, img:"", shape:"" }); };
+  $("avOk").onclick = () => { S.avMenu = false;
+    if(d.mode === "img") quickSave(b, { img:d.img, shape:"" }); else quickSave(b, { img:"", shape:d.shape, color:d.color }); };
 }
 
 async function loadPaused(){

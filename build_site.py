@@ -113,6 +113,8 @@ def main():
             bt["ch"] = str(p["ch"]).strip()[:2]
         if re.fullmatch(r"#[0-9a-fA-F]{6}", str(p.get("color", ""))):
             bt["color"] = p["color"]
+        if p.get("shape") in ("c", "f5", "sq", "st4", "cl7", "t3", "f6", "d", "p", "hx", "sp8", "f9"):
+            bt["shape"] = p["shape"]
         img = str(p.get("img", ""))
         if re.fullmatch(r"data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{20,12000}", img):
             bt["img"] = img
