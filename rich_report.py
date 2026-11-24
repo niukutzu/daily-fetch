@@ -29,12 +29,13 @@ JSON_FORMAT = """
     {"id": 抓取结果里的编号（数字）,
      "source": "信源：原始发布方的名字，参考 Publisher；没有 Publisher 就用方括号里的来源名。例如 CNBC、Z.ai、GitHub Trending、Hacker News",
      "category": "分类，从规定的分类里原样照抄",
-     "title_zh": "中文标题，直接说清是什么事，20 字左右",
+     "title_zh": "中文标题，格式「主体 + 动作：要点」，15～30 字，例如「智谱发布 GLM-5.4：首次用循环变换器做更通用的编程」",
      "intro": "3～5 句中文介绍：是什么、有什么用或为什么重要、关键数字。术语第一次出现写成 English（中文解释）",
-     "must": 0}
+     "must": 0,
+     "must_text": "只有必看条目才写：一句话（40～70 字）讲清发生了什么和关键数字；非必看填空字符串"}
   ],
   "rank_notes": [
-    {"id": 编号, "title_zh": "中文标题", "brief": "一句话中文简介"}
+    {"id": 编号, "title_zh": "中文标题", "brief": "一句话中文简介（20～40 字）。不要写名次和热度。GitHub 项目以「语言 + 项目，」开头，例如「Python 项目，……」"}
   ],
   "terms": [{"term": "English（中文）", "explain": "两三句大白话解释"}]
 }
@@ -44,6 +45,7 @@ JSON_FORMAT = """
 - 每条 intro 只能根据该条的 Summary、Article lead 写，不要加入抓取结果里没有的事实和数字。
 - rank_notes：抓取结果里所有带「Rank:」的条目都要写一条（GitHub Trending 和 Hacker News 榜单），不管 items 里有没有选它。
 - terms：挑 1～3 个今天出现的新概念。
+- 中文和英文、数字之间加一个空格，例如「发布 GLM-5.4 模型」「264 亿参数」。
 - 读者是中文用户，不懂英文。全部用平实、句子短的简体中文。不用网络烂梗（炸裂、王炸、遥遥领先等）。
 - 原文自称的收入、用户数、价格等数字，标注【自称，未验证】。
 """
@@ -142,6 +144,7 @@ def build(bot, today, title, prompt, user, fetched, ask):
             "heat": src.get("heat_text", ""),
             "date": _short_date(src.get("published", "")),
             "must": must if 1 <= must <= 5 else 0,
+            "must_text": str(x.get("must_text") or "").strip(),
         })
     if len(items) < 5:
         raise ValueError(f"有效条目只有 {len(items)} 条")
@@ -172,7 +175,7 @@ def build(bot, today, title, prompt, user, fetched, ask):
             n, p = notes.get(it["id"], {}), picked.get(it["id"], {})
             rows.append({
                 "rank": f"{prefix} {it['rank']}",
-                "source": it.get("publisher") if src_name == "Hacker News" else src_name,
+                "source": src_name,
                 "title_zh": str(n.get("title_zh") or p.get("title_zh") or "").strip(),
                 "title_en": _clean_en(it.get("title", "")),
                 "url": it.get("url", ""),
@@ -211,7 +214,7 @@ def _md_link(title, url):
 def to_markdown(r):
     out = [r["summary"], "", "## 今日 5 条必看"]
     for i in sorted([i for i in r["items"] if i["must"]], key=lambda i: i["must"]):
-        out.append(f"- **【{i['source']}】{_md_link(i['title_zh'], i['url'])}**：{i['intro']}")
+        out.append(f"- **【{i['source']}】{_md_link(i['title_zh'], i['url'])}**：{i.get('must_text') or i['intro']}")
     out += ["", "## 一手精选速览"]
     for c in r["categories"]:
         rows = [i for i in r["items"] if i["category"] == c and not i["must"]]

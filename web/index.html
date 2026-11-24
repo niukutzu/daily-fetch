@@ -477,7 +477,7 @@ function richHtml(R){
   const cats = R.categories.map((c, k) => ({ name:c, n: items.filter(i => i.category === c).length, color: CAT_COLORS[k % CAT_COLORS.length] })).filter(c => c.n);
   let h = `<p class="sum">${esc(R.summary)}</p>`;
   if(musts.length) h += `<h2>今日 ${musts.length} 条必看</h2><ol class="must">` + musts.map(i =>
-    `<li><span class="src">【${esc(i.source)}】</span>${ext(i.url, esc(i.title_zh))}<span class="ix">：${esc(i.intro)}</span></li>`).join("") + `</ol>`;
+    `<li><span class="src">【${esc(i.source)}】</span>${ext(i.url, esc(i.title_zh))}<span class="ix">：${esc(i.must_text || i.intro)}</span></li>`).join("") + `</ol>`;
   h += `<h2>信源入选统计</h2><div class="rcards"><div class="rbox"><div class="bars">` +
     shown.map(([s, n]) => `<div class="bar" title="${esc(s)}：${n} 条"><span class="n">${esc(s)}</span><span class="tr"><span class="fl" style="width:${Math.min(100, n / max * 100).toFixed(1)}%"></span></span><span class="c">${n} 条</span></div>`).join("") +
     `</div></div><div class="rbox"><div class="donut">${donutSvg(cats, total)}<div class="lg">` +
