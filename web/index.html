@@ -52,6 +52,21 @@ a{color:var(--link);text-decoration:none}
 .row .pv{flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--blue);flex:none}
 .ptag{font-size:11px;color:var(--sub);border:1px solid #34343a;border-radius:6px;padding:0 5px;flex:none}
+.av.sm{width:20px;height:20px;font-size:10px}
+.av.sm img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.hitn{padding:8px 12px 4px;font-size:12px;color:var(--muted)}
+.sres{display:flex;flex-direction:column;gap:2px;width:100%;min-width:0;padding:8px 10px;border-radius:12px;text-align:left}
+.sres:hover{background:var(--hover)}
+.sres .h{display:flex;align-items:center;gap:6px;min-width:0}
+.sres .nm{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sres .tm{flex:none;font-size:12px;color:var(--muted)}
+.sres .tt{min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sres .sx{font-size:13px;line-height:1.45;color:var(--sub);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.more50{display:block;width:calc(100% - 8px);margin:6px 4px 10px;padding:8px;border-radius:10px;background:var(--hover);color:var(--sub);font-size:13px}
+mark{background:transparent;color:#fdba74;font-weight:600}
+.art li.hit,.art p.hit,.art tr.hit{border-radius:8px;background:rgba(251,146,60,.18);animation:hitfade 2s ease forwards}
+.art tr.hit td{background:rgba(251,146,60,.18);animation:hitfade 2s ease forwards}
+@keyframes hitfade{from{background:rgba(251,146,60,.18)}to{background:transparent}}
 
 /* 中栏 */
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -386,6 +401,39 @@ const av = (b, cls="") => b.img && /^data:image\//.test(b.img) ? `<span class="a
   : b.shape && SHAPE_IDS.includes(b.shape) ? `<span class="av blob ${cls}">${blobSvg(b.shape, b.color)}</span>`
   : `<span class="av ${cls}" style="background:${esc(b.color)}">${esc(b.ch)}</span>`;
 const mins = r => Math.max(1, Math.round((r.words || 1500) / 500));
+let IDX = null, idxP = null, qTimer = null, sideN = 50, sideQ = "";
+function loadIdx(){
+  if(IDX) return Promise.resolve(IDX);
+  if(!idxP) idxP = fetch("search.json?" + (S.data && S.data.built ? encodeURIComponent(S.data.built) : Date.now())).then(r => { if(!r.ok) throw new Error(String(r.status)); return r.json(); }).then(d => {
+    IDX = Array.isArray(d) ? d : []; return IDX;
+  }).catch(() => { IDX = []; return IDX; });
+  return idxP;
+}
+function hl(s, words){
+  const text = esc(s);
+  const pats = [];
+  for(const w of words){
+    if(!w) continue;
+    const p = esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if(p) pats.push(p);
+  }
+  if(!pats.length) return text;
+  pats.sort((a, b) => b.length - a.length);
+  return text.replace(new RegExp(pats.join("|"), "gi"), m => `<mark>${m}</mark>`);
+}
+function snip(x, words){
+  const s = String(x || "");
+  if(!s) return "";
+  const low = s.toLowerCase();
+  let at = -1, len = 0;
+  for(const w of words){
+    const i = low.indexOf(w);
+    if(i >= 0 && (at < 0 || i < at)){ at = i; len = w.length; }
+  }
+  if(at < 0) return s.length > 60 ? s.slice(0, 60) + "…" : s;
+  const a = Math.max(0, at - 30), b = Math.min(s.length, at + len + 30);
+  return (a > 0 ? "…" : "") + s.slice(a, b) + (b < s.length ? "…" : "");
+}
 
 /* ---------- 导航（手机返回键也能用） ---------- */
 function go(patch, push=true){
@@ -429,17 +477,62 @@ function renderBrand(){
 }
 function renderSide(){
   renderBrand();
-  const q = S.q.trim().toLowerCase();
-  const list = S.data.bots.filter(b => !q || b.name.toLowerCase().includes(q) ||
-    reps(b.id).some(r => r.title.toLowerCase().includes(q) || (r.items||[]).some(i => (i.title + i.text).toLowerCase().includes(q))));
-  $("bots").innerHTML = list.length ? list.map(b => {
+  const rowHtml = b => {
     const r = latest(b.id), p = isPaused(b.id);
     const pv = r ? (r.items && r.items[0] ? r.items[0].title : r.excerpt) : `还没有报告 · ${b.sched}`;
     return `<button class="row ${b.id === S.sel && !narrow() ? "on" : ""} ${p ? "paused" : ""}" data-bot="${b.id}">
       ${av(b)}<span class="mid"><span class="l1"><span class="nm">${esc(b.name)}</span><span class="tm">${r ? rel(r.date) : ""}</span></span>
       <span class="l2"><span class="pv">${esc(pv)}</span>${r && !READ.has(r.id) ? '<span class="dot" aria-label="未读"></span>' : ""}${p ? '<span class="ptag">已暂停</span>' : ""}</span></span></button>`;
-  }).join("") : `<div class="empty" style="padding-top:40px">没有找到「${esc(S.q)}」</div>`;
-  $("bots").querySelectorAll(".row").forEach(el => el.onclick = () => pickBot(el.dataset.bot));
+  };
+  const bindRows = () => $("bots").querySelectorAll(".row").forEach(el => el.onclick = () => pickBot(el.dataset.bot));
+  const raw = S.q.trim();
+  if(!raw){
+    sideQ = ""; sideN = 50;
+    const list = S.data.bots;
+    $("bots").innerHTML = list.length ? list.map(rowHtml).join("") : `<div class="empty" style="padding-top:40px">没有找到「${esc(S.q)}」</div>`;
+    bindRows();
+    return;
+  }
+  if(!IDX){
+    $("bots").innerHTML = `<div class="empty" style="padding-top:40px">正在加载索引…</div>`;
+    loadIdx().then(() => { if(S.q.trim()) renderSide(); });
+    return;
+  }
+  if(sideQ !== raw){ sideQ = raw; sideN = 50; }
+  const words = raw.split(/[ \u3000]+/).filter(Boolean).map(w => w.toLowerCase());
+  const nameBots = S.data.bots.filter(b => words.every(w => b.name.toLowerCase().includes(w)));
+  const hits = IDX.filter(it => {
+    const hay = ((it.t || "") + (it.e || "") + (it.x || "") + (it.s || "") + (it.c || "")).toLowerCase();
+    return words.every(w => hay.includes(w));
+  });
+  const shown = hits.slice(0, sideN);
+  const head = hits.length
+    ? `<div class="hitn">找到 ${hits.length} 条</div>`
+    : `<div class="empty" style="padding-top:40px">没有找到「${esc(S.q)}」</div>`;
+  const res = shown.map(it => {
+    const b = bot(it.b);
+    const title = it.t || it.e || "";
+    const sx = snip(it.x || "", words);
+    return `<button class="sres" type="button">
+      <span class="h">${b ? av(b, "sm") : `<span class="av sm"></span>`}<span class="nm">${esc(b ? b.name : it.b)}</span><span class="tm">${it.d ? rel(it.d) : ""}</span></span>
+      <span class="tt">${hl(title, words)}</span>
+      ${sx ? `<span class="sx">${hl(sx, words)}</span>` : ""}
+    </button>`;
+  }).join("");
+  const more = hits.length > shown.length ? `<button class="more50" type="button" id="more50">再显示 50 条</button>` : "";
+  $("bots").innerHTML = head + nameBots.map(rowHtml).join("") + res + more;
+  bindRows();
+  $("bots").querySelectorAll(".sres").forEach((el, k) => el.onclick = () => {
+    const it = shown[k];
+    S.jump = { r: it.r, i: it.i, w: words[0] };
+    openRep(it.r);
+  });
+  if($("more50")) $("more50").onclick = () => {
+    const top = $("bots").scrollTop;
+    sideN += 50;
+    renderSide();
+    $("bots").scrollTop = top;
+  };
 }
 
 function renderHdr(){
@@ -483,7 +576,10 @@ const DOCICON = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="tr
 async function renderReader(){
   const id = S.reading, r = S.data.items.find(x => x.id === id), b = bot(r.bot), body = $("pageBody");
   $("page").hidden = false;
-  if(S.pageShown === id) return;
+  if(S.pageShown === id){
+    if(S.jump && S.jump.r === id && S.richId === id) jumpTo(id, S.richNow);
+    return;
+  }
   S.pageShown = id;
   $("pPill").innerHTML = DOCICON + `<span>${esc(r.title)}</span>`;
   $("pShare").textContent = "分享";
@@ -496,7 +592,36 @@ async function renderReader(){
     ${rich ? richHtml(rich) : html}</article>`;
   body.scrollTop = 0;
   if(rich) bindRich(rich);
+  S.richNow = rich;
+  S.richId = id;
+  jumpTo(id, rich);
   renderSide();
+}
+function jumpTo(id, rich){
+  const j = S.jump;
+  if(!j || j.r !== id) return;
+  const body = $("pageBody");
+  let el = null;
+  if(rich){
+    rich._f = { cat:"全部", src:"全部", q:"" };
+    if($("rxSrc")) $("rxSrc").value = "全部";
+    if($("rxQ")) $("rxQ").value = "";
+    if($("rxTbl")) $("rxTbl").innerHTML = richTable(rich);
+    if($("rxReset")) $("rxReset").textContent = `重置筛选（当前 ${richRows(rich).length} 条）`;
+    document.querySelectorAll("#rxCats button").forEach(b => b.classList.toggle("on", b.dataset.cat === "全部"));
+    const iid = String(j.i);
+    el = [...body.querySelectorAll("tr[data-iid]")].find(tr => tr.getAttribute("data-iid") === iid);
+  }else{
+    const w = String(j.w || "").toLowerCase();
+    const root = body.querySelector("article") || body;
+    el = [...root.querySelectorAll("li, p")].find(n => w && n.textContent.toLowerCase().includes(w));
+  }
+  S.jump = null;
+  if(!el) return;
+  el.classList.remove("hit");
+  void el.offsetWidth;
+  el.classList.add("hit");
+  el.scrollIntoView({ block:"center" });
 }
 
 /* ---------- 结构化报告：总结 / 必看 / 统计 / 可筛选速览表 / 榜单 ---------- */
@@ -527,7 +652,7 @@ function richTable(R){
   if(!rows.length) return `<div class="tbl"><div class="nomatch">没有符合条件的条目</div></div>`;
   return `<div class="tbl"><table><colgroup><col style="width:15%"><col style="width:28%"><col style="width:40%"><col style="width:17%"></colgroup>
     <thead><tr><th>信源</th><th>中文标题（点击直达）</th><th>简介</th><th>${R.bot === "chiangmai" || R.bot === "events" ? "时间地点与热度" : "热度与时间"}</th></tr></thead><tbody>` +
-    rows.map(i => `<tr><td class="c-src"><span class="tag">${esc(i.source)}</span></td>
+    rows.map(i => `<tr data-iid="${esc(i.id)}"><td class="c-src"><span class="tag">${esc(i.source)}</span></td>
       <td class="tt">${ext(i.url, esc(i.title_zh))}${lock(i)}${i.title_en ? `<span class="en">${esc(i.title_en)}</span>` : ""}</td>
       <td class="c-in">${esc(i.intro)}</td>
       <td class="c-ht">${i.when ? `<span class="ht wh">${esc(i.when)}</span>` : ""}<span class="ht">${esc(i.heat || (i.when ? "" : i.via) || "")}</span>${i.date ? `<span class="dt">${esc(i.date)}</span>` : ""}${safeUrl(i.discuss) ? `<a class="dl" href="${esc(i.discuss)}" target="_blank" rel="noopener">HN 讨论</a>` : ""}</td></tr>`).join("") +
@@ -864,7 +989,7 @@ $("pShare").onclick = async () => {
     else { await navigator.clipboard.writeText(url); $("pShare").textContent = "已复制链接"; setTimeout(() => $("pShare").textContent = "分享", 2000); }
   }catch(e){}
 };
-$("q").oninput = e => { S.q = e.target.value; renderSide(); };
+$("q").oninput = e => { S.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(() => renderSide(), 150); };
 let wasNarrow = narrow();
 addEventListener("resize", () => { if(narrow() !== wasNarrow){ wasNarrow = narrow(); render(); } });
 fetch("data.json?" + Date.now()).then(r => r.json()).then(d => {

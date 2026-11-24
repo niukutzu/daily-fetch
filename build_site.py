@@ -58,6 +58,103 @@ def top_items(body):
     return items
 
 
+def _clean_md(s):
+    """去掉链接、加粗等 markdown 符号，压成一行。空则返回空串。"""
+    if s is None:
+        return ""
+    if not isinstance(s, str):
+        s = str(s)
+    s = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", s)
+    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
+    s = s.replace("**", "").replace("__", "").replace("`", "")
+    s = re.sub(r"\*([^*\n]+)\*", r"\1", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _search_row(rid, bot, date, i, t="", e="", x="", s="", c=""):
+    """一条情报。空字段省略，减小体积。"""
+    row = {"r": rid, "b": bot, "d": date, "i": i}
+    for k, v in (("t", t), ("e", e), ("x", x), ("s", s), ("c", c)):
+        v = _clean_md(v)
+        if v:
+            row[k] = v
+    return row
+
+
+_ITEM_RE = re.compile(r"\s*(?:[-*]|\d+\.)\s+(.*\S)")
+
+
+def _list_tx(raw):
+    """列表项：标题用加粗或链接文字，没有就用前 40 字；其余给简介。"""
+    link = re.search(r"\[([^\]]+)\]\([^)]*\)", raw)
+    bold = re.search(r"\*\*(.+?)\*\*|__(.+?)__", raw)
+    if link:
+        t, rest = link.group(1), raw[:link.start()] + raw[link.end():]
+    elif bold:
+        t, rest = (bold.group(1) or bold.group(2) or ""), raw[:bold.start()] + raw[bold.end():]
+    else:
+        cleaned = _clean_md(raw)
+        return cleaned[:40], cleaned[40:].strip()
+    t = _clean_md(t)
+    x = re.sub(r"^[：:\s]+", "", _clean_md(rest))
+    if not t:
+        cleaned = _clean_md(raw)
+        return cleaned[:40], cleaned[40:].strip()
+    return t, x
+
+
+def _body_items(body):
+    """正文里每个列表项一条。缩进的续行并进上一条。"""
+    items, buf = [], None
+    for line in body.splitlines():
+        m = _ITEM_RE.match(line)
+        if m:
+            if buf is not None:
+                items.append(buf)
+            buf = m.group(1).strip()
+            continue
+        if buf is None:
+            continue
+        if line[:1] in (" ", "\t") and line.strip() and not line.lstrip().startswith("#"):
+            buf += " " + line.strip()
+            continue
+        items.append(buf)
+        buf = None
+    if buf is not None:
+        items.append(buf)
+    out = []
+    for raw in items:
+        t, x = _list_tx(raw)
+        if t or x:
+            out.append((t, x))
+    return out
+
+
+def _rows_from_rich(rid, bot, date, json_path):
+    try:
+        with open(json_path, encoding="utf-8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return []
+    rows = []
+    for it in doc.get("items") or []:
+        if not isinstance(it, dict):
+            continue
+        iid = it.get("id", 0)
+        if iid is None or iid == "":
+            iid = 0
+        rows.append(_search_row(
+            rid, bot, date, iid,
+            it.get("title_zh"), it.get("title_en"), it.get("intro"),
+            it.get("source"), it.get("category"),
+        ))
+    return rows
+
+
+def _rows_from_body(rid, bot, date, body):
+    return [_search_row(rid, bot, date, n, t, "", x) for n, (t, x) in enumerate(_body_items(body))]
+
+
 def render(md_text):
     html = markdown.markdown(md_text, extensions=["tables", "sane_lists"])
     # 网站上存了开关钥匙，报告里的 HTML 一律去掉脚本类内容
@@ -76,6 +173,7 @@ def main():
     os.makedirs(os.path.join(SITE, "feeds"))
 
     index = []
+    search = []
     for bot, name, icon, *_ in BOTS:
         for path in sorted(glob.glob(os.path.join(BASE, "reports", bot, "*.md")), reverse=True):
             date = os.path.basename(path)[:-3]
@@ -95,6 +193,9 @@ def main():
             rich = os.path.exists(path[:-3] + ".json")
             if rich:
                 shutil.copy(path[:-3] + ".json", os.path.join(SITE, "r", f"{rid}.json"))
+                search.extend(_rows_from_rich(rid, bot, date, path[:-3] + ".json"))
+            else:
+                search.extend(_rows_from_body(rid, bot, date, body))
             index.append({"id": rid, "bot": bot, "date": date, "title": title, "excerpt": excerpt, "html": html,
                           "items": top_items(body), "words": len(re.sub(r"\s", "", plain)), "rich": rich})
 
@@ -129,6 +230,9 @@ def main():
     }
     with open(os.path.join(SITE, "data.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
+    search.sort(key=lambda x: x["d"], reverse=True)
+    with open(os.path.join(SITE, "search.json"), "w", encoding="utf-8") as f:
+        json.dump(search, f, ensure_ascii=False, separators=(",", ":"))
 
     def feed(fname, title, items):
         out = [
