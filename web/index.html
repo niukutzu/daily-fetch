@@ -352,6 +352,10 @@ function go(patch, push=true){
   push ? history.pushState(st, "", url) : history.replaceState(st, "", url);
   render();
 }
+window.addEventListener("hashchange", () => {
+  const id = location.hash.slice(1);
+  if(S.data && id && id !== S.reading && S.data.items.some(x => x.id === id)) openRep(id);
+});
 window.addEventListener("popstate", e => {
   const st = e.state || { sel:S.sel, reading:null, scr: narrow() ? "list" : "chat", depth:0 };
   Object.assign(S, st); render();
@@ -495,7 +499,7 @@ function richHtml(R){
     [{ name:"全部", n: total }, ...cats].map(c => `<button data-cat="${esc(c.name)}" class="${c.name === "全部" ? "on" : ""}">${esc(c.name)}<small>${c.n}</small></button>`).join("") +
     `</div><div class="filt"><label>选择信源<select id="rxSrc"><option value="全部">全部信源</option>` +
     srcs.map(([s, n]) => `<option value="${esc(s)}">${esc(s)}（${n}）</option>`).join("") +
-    `</select></label><label>搜索关键词<input id="rxQ" type="search" placeholder="例如 Nvidia、Claude、开源、芯片" autocomplete="off"></label></div>
+    `</select></label><label>搜索关键词<input id="rxQ" type="search" placeholder="输入中文或英文关键词" autocomplete="off"></label></div>
     <button class="reset" id="rxReset">重置筛选（当前 ${total} 条）</button><div id="rxTbl">${richTable(R)}</div>`;
   (R.rankings || []).forEach(rk => {
     h += `<h2>${esc(rk.name)}</h2><div class="tbl"><table><colgroup><col style="width:9%"><col style="width:15%"><col style="width:30%"><col style="width:30%"><col style="width:16%"></colgroup>
