@@ -99,7 +99,7 @@ jobs:
       - name: 生成阅读器网站
         run: python build_site.py
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: site
 
