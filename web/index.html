@@ -103,8 +103,6 @@ a{color:var(--link);text-decoration:none}
 .art th,.art td{border:1px solid #2a2a2f;padding:7px 10px;vertical-align:top}
 .art th{background:#1a1a1e}
 .art code{background:#1f1f24;border-radius:4px;padding:1px 5px}
-.endbar{display:flex;gap:10px;margin-top:36px}
-.endbar button{flex:1;height:46px;border-radius:12px}
 .btn-ghost{border:1px solid var(--line2)!important;background:#151518!important;color:var(--sub)}
 .btn-pri{background:var(--blue2)!important;color:#fff;font-weight:600}
 
@@ -431,15 +429,11 @@ async function renderReader(){
   if(r.rich){ try{ rich = await (await fetch("r/" + id + ".json")).json(); }catch(e){ rich = null; } }
   if(!rich){ try{ html = await (await fetch("r/" + id + ".html")).text(); }catch(e){ html = "<p>加载失败，请刷新重试。</p>"; } }
   if(S.reading !== id) return;
-  const next = S.data.bots.find(x => x.id !== b.id && latest(x.id) && !READ.has(latest(x.id).id));
   body.innerHTML = `<article class="wrap art ${rich ? "rich" : ""}"><h1>${esc(r.title)}</h1><div class="meta">${esc(b.name)} · ${md(r.date)} ${wk(r.date)} · 约 ${mins(r)} 分钟</div>
     ${rich ? richHtml(rich) : html}
-    <div class="endbar"><button class="btn-ghost" id="rBack">返回对话</button>
-    <button class="btn-pri" id="rNext">${next ? "下一个未读：" + esc(next.name) : "全部读完了"}</button></div></article>`;
+    <div style="height:40px"></div></article>`;
   body.scrollTop = 0;
   if(rich) bindRich(rich);
-  $("rBack").onclick = backBtn;
-  $("rNext").onclick = () => next ? openRep(latest(next.id).id) : go({ reading:null, scr: narrow() ? "list" : "chat" });
   renderSide();
 }
 
