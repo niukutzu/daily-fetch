@@ -18,11 +18,13 @@ on:
         required: true
         default: tech
         type: choice
-        options: [tech, politics, finance, reddit, music, commerce, events, releases]
+        options: [tech, politics, finance, reddit, music, commerce, events, releases, 只更新网站]
 
 permissions:
   contents: write
   issues: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: daily-fetch
@@ -31,6 +33,9 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     timeout-minutes: 30
     steps:
       - name: 决定运行哪个 Bot
@@ -61,9 +66,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 抓取（不耗 AI 额度）
+        if: steps.pick.outputs.bot != '只更新网站'
         run: python fetch_all.py --bot ${{ steps.pick.outputs.bot }}
 
       - name: AI 写中文报告并推送
+        if: steps.pick.outputs.bot != '只更新网站'
         env:
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
@@ -78,13 +85,24 @@ jobs:
           LLM_MODEL_RELEASES: ${{ vars.LLM_MODEL_RELEASES }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python write_report.py ${{ steps.pick.outputs.bot }}
 
       - name: 保存报告和去重记录
+        if: steps.pick.outputs.bot != '只更新网站'
         run: |
           git config user.name "daily-fetch-bot"
           git config user.email "actions@github.com"
           git add reports state
           git commit -m "报告：${{ steps.pick.outputs.bot }} $(TZ=Asia/Shanghai date +%F)" || echo "没有变化"
           git pull --rebase origin main && git push origin HEAD:main
+
+      - name: 生成阅读器网站
+        run: python build_site.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: 发布到 GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

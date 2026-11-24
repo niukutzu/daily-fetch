@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>每日情报</title>
+<link rel="alternate" type="application/rss+xml" title="每日情报 · 全部" href="feeds/all.xml">
+<style>
+:root{
+  --bg:#f6f5f1; --panel:#fff; --side:#efede7; --line:#e3e0d8; --text:#22211f; --muted:#7a776f;
+  --accent:#c2410c; --accent-soft:#fdeee5; --sel:#f3efe6; --link:#1d4ed8;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#161615; --panel:#1d1d1b; --side:#191918; --line:#2e2d2a; --text:#e9e6df; --muted:#8f8b82;
+  --accent:#fb923c; --accent-soft:#3a2415; --sel:#26251f; --link:#93b4ff;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.app{display:grid;grid-template-columns:220px 340px 1fr;height:100vh}
+/* 左栏 */
+.side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}
+.brand{padding:18px 18px 10px;font-weight:700;font-size:17px;letter-spacing:.5px}
+.brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
+.feed{display:flex;align-items:center;gap:10px;width:100%;padding:9px 18px;text-align:left;border-left:3px solid transparent}
+.feed:hover{background:var(--sel)}
+.feed.on{background:var(--sel);border-left-color:var(--accent);font-weight:600}
+.feed .ico{width:20px;text-align:center}
+.feed .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:12px;min-width:22px;padding:0 7px;border-radius:10px;background:var(--accent-soft);color:var(--accent);text-align:center}
+.badge:empty{display:none}
+.sep{height:1px;background:var(--line);margin:8px 18px}
+.side-foot{margin-top:auto;padding:14px 18px;font-size:12px;color:var(--muted)}
+.side-foot a{color:var(--muted)}
+/* 中栏 */
+.list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:var(--panel)}
+.list-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.list-head h2{margin:0;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:14px;color:var(--muted)}
+.chip.on{border-color:var(--accent);color:var(--accent)}
+.items{overflow:auto;flex:1}
+.item{display:block;width:100%;text-align:left;padding:12px 16px 12px 26px;border-bottom:1px solid var(--line);position:relative}
+.item:hover{background:var(--sel)}
+.item.on{background:var(--sel)}
+.item.unread::before{content:"";position:absolute;left:11px;top:19px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.item .meta{font-size:12px;color:var(--muted)}
+.item .t{font-weight:600;margin:2px 0}
+.item.read .t{font-weight:400;color:var(--muted)}
+.item .ex{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+/* 右栏 */
+.reader{overflow:auto;background:var(--panel)}
+.reader-in{max-width:760px;margin:0 auto;padding:28px 36px 80px}
+.reader h1{font-size:24px;line-height:1.35;margin:0 0 6px}
+.reader .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+.art h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.art h3{font-size:16px;margin:22px 0 8px}
+.art p,.art li{line-height:1.8}
+.art ul,.art ol{padding-left:22px}
+.art li{margin:6px 0}
+.art a{color:var(--link);text-decoration:none}
+.art a:hover{text-decoration:underline}
+.art table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0;display:block;overflow-x:auto}
+.art th,.art td{border:1px solid var(--line);padding:7px 10px;text-align:center;vertical-align:middle}
+.art th{background:var(--sel)}
+.back{display:none}
+.nav{display:flex;gap:10px;margin-top:40px}
+.nav button{flex:1;padding:10px;border:1px solid var(--line);border-radius:8px;color:var(--muted)}
+.nav button:disabled{opacity:.35;cursor:default}
+.hint{color:var(--muted);text-align:center;padding-top:30vh}
+.rss-box{font-size:12px;word-break:break-all}
+/* 手机 */
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:100vh}
+  .side{align-items:center}
+  .side{border-right:0;border-bottom:1px solid var(--line);flex-direction:row;overflow-x:auto;white-space:nowrap}
+  .brand,.sep,.side-foot{display:none}
+  .feed{width:auto;padding:10px 14px;border-left:0;border-bottom:3px solid transparent}
+  .feed.on{border-bottom-color:var(--accent)}
+  .app.reading .side,.app.reading .list{display:none}
+  .app:not(.reading) .reader{display:none}
+  .reader-in{padding:16px 18px 60px}
+  .back{display:inline-block;margin-bottom:14px;color:var(--accent)}
+  .list{border-right:0}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <nav class="side" id="side"></nav>
+  <section class="list">
+    <div class="list-head">
+      <h2 id="listTitle">全部</h2>
+      <button class="chip" id="unreadOnly">只看未读</button>
+      <button class="chip" id="markAll">全部已读</button>
+    </div>
+    <div class="items" id="items"></div>
+  </section>
+  <main class="reader" id="reader"><div class="hint">← 选一份报告开始阅读</div></main>
+</div>
+<script>
+const S = {data:null, bot:"all", onlyUnread:false, cur:null};
+const store = {
+  get(){ try{ return new Set(JSON.parse(localStorage.getItem("df_read")||"[]")); }catch(e){ return S._mem||(S._mem=new Set()); } },
+  set(s){ S._mem=s; try{ localStorage.setItem("df_read", JSON.stringify([...s])); }catch(e){} }
+};
+let READ = store.get();
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const botOf = id => S.data.bots.find(b => b.id === id) || {name:id, icon:"•"};
+const fmtDate = d => { const w="日一二三四五六"[new Date(d+"T12:00:00Z").getUTCDay()]; return d.slice(5).replace("-","月")+"日 周"+w; };
+
+function visible(){
+  return S.data.items.filter(it => (S.bot==="all"||it.bot===S.bot) && (!S.onlyUnread||!READ.has(it.id)||it.id===S.cur));
+}
+function renderSide(){
+  const cnt = b => S.data.items.filter(it => (b==="all"||it.bot===b) && !READ.has(it.id)).length || "";
+  const row = (id,icon,name) => `<button class="feed ${S.bot===id?"on":""}" data-bot="${id}"><span class="ico">${icon}</span><span class="nm">${name}</span><span class="badge">${cnt(id)}</span></button>`;
+  $("side").innerHTML = `<div class="brand">每日情报<small>更新于 ${S.data.built}</small></div>`
+    + row("all","📰","全部") + `<div class="sep"></div>`
+    + S.data.bots.map(b => row(b.id,b.icon,b.name)).join("")
+    + `<div class="side-foot">RSS 订阅：<br><a href="feeds/all.xml" target="_blank">全部</a> · 单个 Bot 在阅读页底部</div>`;
+  $("side").querySelectorAll(".feed").forEach(el => el.onclick = () => { S.bot = el.dataset.bot; renderAll(); });
+}
+function renderList(){
+  $("listTitle").textContent = S.bot==="all" ? "全部" : botOf(S.bot).name;
+  $("unreadOnly").classList.toggle("on", S.onlyUnread);
+  const its = visible();
+  $("items").innerHTML = its.length ? its.map(it => {
+    const b = botOf(it.bot);
+    return `<button class="item ${READ.has(it.id)?"read":"unread"} ${it.id===S.cur?"on":""}" data-id="${it.id}">
+      <div class="meta">${b.icon} ${esc(b.name)} · ${fmtDate(it.date)}</div>
+      <div class="t">${esc(it.title)}</div><div class="ex">${esc(it.excerpt)}</div></button>`;
+  }).join("") : `<div class="empty">${S.onlyUnread?"没有未读的报告 🎉":"还没有报告"}</div>`;
+  $("items").querySelectorAll(".item").forEach(el => el.onclick = () => { location.hash = el.dataset.id; });
+}
+function renderAll(){ renderSide(); renderList(); }
+
+async function open_(id){
+  const it = S.data.items.find(x => x.id === id);
+  if(!it){ return; }
+  S.cur = id; READ.add(id); store.set(READ);
+  $("app").classList.add("reading");
+  const b = botOf(it.bot);
+  $("reader").innerHTML = `<div class="reader-in"><div class="hint" style="padding-top:20vh">加载中…</div></div>`;
+  let html = "";
+  try{ html = await (await fetch("r/"+id+".html")).text(); }catch(e){ html = "<p>加载失败，请刷新重试。</p>"; }
+  const its = visible(), i = its.findIndex(x => x.id === id);
+  const prev = its[i-1], next = its[i+1];
+  $("reader").innerHTML = `<div class="reader-in">
+    <button class="back" id="back">← 返回列表</button>
+    <h1>${esc(it.title)}</h1><div class="sub">${b.icon} ${esc(b.name)} · ${fmtDate(it.date)}</div>
+    <article class="art">${html}</article>
+    <div class="nav"><button id="pv" ${prev?"":"disabled"}>↑ 上一篇</button><button id="nx" ${next?"":"disabled"}>下一篇 ↓</button></div>
+    <p class="rss-box" style="margin-top:30px;color:var(--muted)">订阅这个 Bot 的 RSS：${location.href.split("#")[0].replace(/index\.html$/,"")}feeds/${it.bot}.xml</p>
+  </div>`;
+  $("reader").scrollTop = 0; window.scrollTo(0,0);
+  $("back").onclick = () => { $("app").classList.remove("reading"); history.replaceState(null,"",location.pathname); S.cur=null; renderAll(); };
+  if(prev) $("pv").onclick = () => location.hash = prev.id;
+  if(next) $("nx").onclick = () => location.hash = next.id;
+  renderAll();
+}
+
+$("unreadOnly").onclick = () => { S.onlyUnread = !S.onlyUnread; renderList(); };
+$("markAll").onclick = () => { visible().forEach(it => READ.add(it.id)); store.set(READ); renderAll(); };
+window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if(id) open_(id); });
+document.addEventListener("keydown", e => {
+  if(!S.cur || e.target.tagName==="INPUT") return;
+  if(e.key==="j"||e.key==="ArrowDown"&&e.altKey){ const n=$("nx"); n&&!n.disabled&&n.click(); }
+  if(e.key==="k"){ const p=$("pv"); p&&!p.disabled&&p.click(); }
+});
+
+fetch("data.json?"+Date.now()).then(r => r.json()).then(d => {
+  S.data = d; renderAll();
+  const id = location.hash.slice(1);
+  if(id) open_(id);
+}).catch(() => { $("items").innerHTML = '<div class="empty">数据加载失败，请刷新</div>'; });
+</script>
+</body>
+</html>

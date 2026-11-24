@@ -3,7 +3,8 @@
 每天 GitHub 自动免费运行抓取脚本，再调用你填写的 AI 接口写成中文报告。
 
 ## 报告在哪里看
-- **Issues 页面**：每份报告都是一个 Issue。装了 GitHub 手机 App 的话，会收到通知。
+- **阅读器网站**：https://niukutzu.github.io/daily-fetch/ （手机、电脑都能看，看过的自动标已读）
+- **RSS 订阅**：https://niukutzu.github.io/daily-fetch/feeds/all.xml （单个 Bot 把 all 换成代号，如 tech.xml）
 - **reports 文件夹**：所有报告按日期存档，`reports/<bot>/YYYY-MM-DD.md`。
 
 ## 运行时间（北京时间，GitHub 经常会晚 5～30 分钟）
