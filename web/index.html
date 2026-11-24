@@ -191,6 +191,72 @@ a{color:var(--link);text-decoration:none}
 .pacts button{flex:1;height:44px;border-radius:12px;text-align:center}
 .pacts button:disabled{opacity:.45;cursor:default}
 
+/* 结构化报告（Grok 样式版面） */
+.wrap.rich{max-width:1060px}
+.rich .sum{color:#d4d4d8;line-height:1.85;margin:0 0 6px}
+.rich h2{font-size:20px;margin:40px 0 14px;padding:0;border:0}
+.rich .must{margin:0;padding-left:24px}
+.rich .must li{margin:10px 0;line-height:1.8}
+.rich .must .src{color:var(--text)}
+.rich .must a{color:var(--text);font-weight:600;text-decoration:underline;text-decoration-color:#555;text-underline-offset:3px}
+.rich .must .ix{color:var(--sub)}
+.rcards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rbox{border:1px solid var(--line2);border-radius:16px;padding:16px;background:#111113;min-width:0}
+.bars{display:flex;flex-direction:column;gap:2px}
+.bar{display:grid;grid-template-columns:minmax(80px,130px) 1fr 44px;align-items:center;gap:12px;font-size:13px;padding:3px 0;border-radius:6px}
+.bar:hover{background:#1a1a1e}
+.bar .n{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar:first-child .n{color:var(--text)}
+.bar .tr{display:block;height:6px;border-radius:3px;background:#232328;overflow:hidden}
+.bar .fl{display:block;height:100%;border-radius:3px;background:#3987e5}
+.bar .c{text-align:right;color:var(--text);white-space:nowrap}
+.donut{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.donut svg{flex:none}
+.donut .seg{cursor:default;transition:opacity .15s}
+.donut svg:hover .seg{opacity:.45}.donut svg .seg:hover{opacity:1}
+.lg{display:flex;flex-direction:column;gap:8px;font-size:13px;min-width:0}
+.lg div{display:flex;align-items:center;gap:8px}
+.lg i{width:9px;height:9px;border-radius:50%;flex:none}
+.lg b{font-weight:600}.lg span{color:var(--sub)}.lg em{font-style:normal;color:var(--muted)}
+.ctabs{display:flex;gap:4px 18px;flex-wrap:wrap;margin:0 0 12px;font-size:14px}
+.ctabs button{padding:4px 0;color:var(--sub);border-bottom:2px solid transparent}
+.ctabs button.on{color:var(--text);border-color:var(--text)}
+.ctabs small{color:var(--muted);margin-left:4px}
+.filt{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.filt label{display:block;font-size:12px;color:var(--muted);border:1px solid var(--line2);border-radius:14px;padding:12px 14px;background:#111113}
+.filt select,.filt input{display:block;width:100%;margin-top:6px;height:36px;padding:0 10px;border:0;border-radius:8px;background:#1f1f24;color:var(--text);font:inherit;font-size:15px;outline:0}
+.reset{margin:14px 0;height:34px;padding:0 14px;border-radius:17px;background:#1f1f24;font-size:13px}
+.reset:hover{background:#29292f}
+.tbl{border:1px solid var(--line2);border-radius:14px;overflow:hidden}
+.art .tbl table{display:table;margin:0;width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.art .tbl th{border:0;font-size:12px;font-weight:500;color:var(--sub);text-align:left;padding:10px 12px;background:#141417;border-bottom:1px solid var(--line2)}
+.art .tbl td{border:0;padding:14px 12px;vertical-align:top;border-top:1px solid #222226;line-height:1.7}
+.art .tbl tr:first-child td{border-top:0}
+.tbl tbody tr:hover{background:#141417}
+.tag{display:inline-block;font-size:12px;padding:2px 9px;border:1px solid #34343a;border-radius:12px;background:#18181b;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tbl .tt a{color:var(--text);font-weight:600;text-decoration:underline;text-decoration-color:#555;text-underline-offset:3px}
+.tbl .tt a:hover{text-decoration-color:#fff}
+.tbl .en{display:block;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.tbl .ht{color:var(--text);white-space:normal}
+.tbl .dt,.tbl .dl{display:block;font-size:12px;color:var(--muted)}
+.tbl .dl{color:var(--chip);margin-top:2px}
+.tbl .rk{color:var(--sub);font-weight:600;white-space:nowrap}
+.nomatch{padding:30px;text-align:center;color:var(--muted)}
+.terms{padding-left:20px}.terms li{margin:8px 0;line-height:1.8}
+@media (max-width:760px){
+  .rcards,.filt{grid-template-columns:1fr}
+  .tbl{border:0;border-radius:0;overflow:visible}
+  .tbl thead{display:none}
+  .art .tbl table,.art .tbl tbody,.art .tbl tr,.art .tbl td{display:block;width:auto}
+  .tbl tr{border:1px solid var(--line2);border-radius:14px;padding:12px 14px;margin-bottom:10px;background:#111113}
+  .art .tbl td{border:0;padding:3px 0}
+  .art .tbl td.c-src,.art .tbl td.c-rk{display:inline-block;margin-right:8px}
+  .art .tbl td.c-ht{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline;color:var(--sub);font-size:13px}
+  .tbl td.c-ht .dt,.tbl td.c-ht .dl{display:inline}
+  .tbl .c-in{color:#d4d4d8;font-size:14px}
+  .rich h2{font-size:18px;margin-top:32px}
+}
+
 /* 手机：一次一层 */
 @media (max-width:899px){
   .side,.panel{width:100%;border:0}
@@ -350,18 +416,101 @@ function renderBody(){
 async function renderReader(){
   const body = $("body"), id = S.reading, r = S.data.items.find(x => x.id === id), b = bot(r.bot);
   body.innerHTML = `<div class="wrap"><div class="empty">加载中…</div></div>`;
-  let html;
-  try{ html = await (await fetch("r/" + id + ".html")).text(); }catch(e){ html = "<p>加载失败，请刷新重试。</p>"; }
+  let html, rich = null;
+  if(r.rich){ try{ rich = await (await fetch("r/" + id + ".json")).json(); }catch(e){ rich = null; } }
+  if(!rich){ try{ html = await (await fetch("r/" + id + ".html")).text(); }catch(e){ html = "<p>加载失败，请刷新重试。</p>"; } }
   if(S.reading !== id) return;
   const next = S.data.bots.find(x => x.id !== b.id && latest(x.id) && !READ.has(latest(x.id).id));
-  body.innerHTML = `<article class="wrap art"><h1>${esc(r.title)}</h1><div class="meta">${esc(b.name)} · ${md(r.date)} ${wk(r.date)} · 约 ${mins(r)} 分钟</div>
-    ${html}
+  body.innerHTML = `<article class="wrap art ${rich ? "rich" : ""}"><h1>${esc(r.title)}</h1><div class="meta">${esc(b.name)} · ${md(r.date)} ${wk(r.date)} · 约 ${mins(r)} 分钟</div>
+    ${rich ? richHtml(rich) : html}
     <div class="endbar"><button class="btn-ghost" id="rBack">返回对话</button>
     <button class="btn-pri" id="rNext">${next ? "下一个未读：" + esc(next.name) : "全部读完了"}</button></div></article>`;
   body.scrollTop = 0;
+  if(rich) bindRich(rich);
   $("rBack").onclick = backBtn;
   $("rNext").onclick = () => next ? openRep(latest(next.id).id) : go({ reading:null, scr: narrow() ? "list" : "chat" });
   renderSide();
+}
+
+/* ---------- 结构化报告：总结 / 必看 / 统计 / 可筛选速览表 / 榜单 ---------- */
+const CAT_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c"];
+const safeUrl = u => /^https?:\/\//i.test(u || "") ? u : "";
+const ext = (u, t) => safeUrl(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${t}</a>` : t;
+function donutSvg(parts, total){
+  const R = 44, C = 2 * Math.PI * R, gap = parts.length > 1 ? 2 : 0;
+  let off = 0;
+  const segs = parts.map(p => {
+    const len = Math.max(0, p.n / total * C - gap);
+    const seg = `<circle class="seg" r="${R}" cx="60" cy="60" fill="none" stroke="${p.color}" stroke-width="20"
+      stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"><title>${esc(p.name)}：${p.n} 条</title></circle>`;
+    off += p.n / total * C; return seg;
+  }).join("");
+  return `<svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label="按分类的条数"><g transform="rotate(-90 60 60)">${segs}</g>
+    <text x="60" y="58" text-anchor="middle" fill="#ececef" font-size="17" font-weight="700">${total} 条</text>
+    <text x="60" y="76" text-anchor="middle" fill="#8b8b93" font-size="11">${parts.length} 大分类</text></svg>`;
+}
+function richRows(R){
+  const f = R._f, q = f.q.trim().toLowerCase();
+  return R.items.filter(i => (f.cat === "全部" || i.category === f.cat) && (f.src === "全部" || i.source === f.src) &&
+    (!q || (i.title_zh + " " + i.title_en + " " + i.intro + " " + i.source).toLowerCase().includes(q)));
+}
+function richTable(R){
+  const rows = richRows(R);
+  if(!rows.length) return `<div class="tbl"><div class="nomatch">没有符合条件的条目</div></div>`;
+  return `<div class="tbl"><table><colgroup><col style="width:15%"><col style="width:28%"><col style="width:40%"><col style="width:17%"></colgroup>
+    <thead><tr><th>信源</th><th>中文标题（点击直达）</th><th>简介</th><th>热度与时间</th></tr></thead><tbody>` +
+    rows.map(i => `<tr><td class="c-src"><span class="tag">${esc(i.source)}</span></td>
+      <td class="tt">${ext(i.url, esc(i.title_zh))}${i.title_en ? `<span class="en">${esc(i.title_en)}</span>` : ""}</td>
+      <td class="c-in">${esc(i.intro)}</td>
+      <td class="c-ht"><span class="ht">${esc(i.heat || i.via || "")}</span>${i.date ? `<span class="dt">${esc(i.date)}</span>` : ""}${safeUrl(i.discuss) ? `<a class="dl" href="${esc(i.discuss)}" target="_blank" rel="noopener">HN 讨论</a>` : ""}</td></tr>`).join("") +
+    `</tbody></table></div>`;
+}
+function richHtml(R){
+  R._f = { cat:"全部", src:"全部", q:"" };
+  const items = R.items, total = items.length;
+  const musts = items.filter(i => i.must).sort((a, b) => a.must - b.must);
+  const srcCount = {}; items.forEach(i => srcCount[i.source] = (srcCount[i.source] || 0) + 1);
+  const srcs = Object.entries(srcCount).sort((a, b) => b[1] - a[1]);
+  const max = srcs.length ? srcs[0][1] : 1;
+  const shown = srcs.length > 13 ? srcs.slice(0, 12) : srcs, rest = srcs.slice(shown.length);
+  if(rest.length) shown.push([`其他 ${rest.length} 个信源`, rest.reduce((t, x) => t + x[1], 0)]);
+  const cats = R.categories.map((c, k) => ({ name:c, n: items.filter(i => i.category === c).length, color: CAT_COLORS[k % CAT_COLORS.length] })).filter(c => c.n);
+  let h = `<p class="sum">${esc(R.summary)}</p>`;
+  if(musts.length) h += `<h2>今日 ${musts.length} 条必看</h2><ol class="must">` + musts.map(i =>
+    `<li><span class="src">【${esc(i.source)}】</span>${ext(i.url, esc(i.title_zh))}<span class="ix">：${esc(i.intro)}</span></li>`).join("") + `</ol>`;
+  h += `<h2>信源入选统计</h2><div class="rcards"><div class="rbox"><div class="bars">` +
+    shown.map(([s, n]) => `<div class="bar" title="${esc(s)}：${n} 条"><span class="n">${esc(s)}</span><span class="tr"><span class="fl" style="width:${Math.min(100, n / max * 100).toFixed(1)}%"></span></span><span class="c">${n} 条</span></div>`).join("") +
+    `</div></div><div class="rbox"><div class="donut">${donutSvg(cats, total)}<div class="lg">` +
+    cats.map(c => `<div><i style="background:${c.color}"></i><b>${c.n} 条</b><span>${esc(c.name)}</span><em>${Math.round(c.n / total * 100)}%</em></div>`).join("") +
+    `</div></div></div></div>`;
+  h += `<h2>一手精选速览表</h2><div class="ctabs" id="rxCats">` +
+    [{ name:"全部", n: total }, ...cats].map(c => `<button data-cat="${esc(c.name)}" class="${c.name === "全部" ? "on" : ""}">${esc(c.name)}<small>${c.n}</small></button>`).join("") +
+    `</div><div class="filt"><label>选择信源<select id="rxSrc"><option value="全部">全部信源</option>` +
+    srcs.map(([s, n]) => `<option value="${esc(s)}">${esc(s)}（${n}）</option>`).join("") +
+    `</select></label><label>搜索关键词<input id="rxQ" type="search" placeholder="例如 Nvidia、Claude、开源、芯片" autocomplete="off"></label></div>
+    <button class="reset" id="rxReset">重置筛选（当前 ${total} 条）</button><div id="rxTbl">${richTable(R)}</div>`;
+  (R.rankings || []).forEach(rk => {
+    h += `<h2>${esc(rk.name)}</h2><div class="tbl"><table><colgroup><col style="width:9%"><col style="width:15%"><col style="width:30%"><col style="width:30%"><col style="width:16%"></colgroup>
+      <thead><tr><th>排名</th><th>信源</th><th>中文标题（点击直达）</th><th>简介</th><th>热度</th></tr></thead><tbody>` +
+      rk.rows.map(x => `<tr><td class="c-rk rk">${esc(x.rank)}</td><td class="c-src"><span class="tag">${esc(x.source)}</span></td>
+        <td class="tt">${ext(x.url, esc(x.title_zh || x.title_en))}${x.title_zh && x.title_en ? `<span class="en">${esc(x.title_en)}</span>` : ""}</td>
+        <td class="c-in">${esc(x.brief)}</td>
+        <td class="c-ht"><span class="ht">${esc(x.heat)}</span>${safeUrl(x.discuss) ? `<a class="dl" href="${esc(x.discuss)}" target="_blank" rel="noopener">HN 讨论</a>` : ""}</td></tr>`).join("") +
+      `</tbody></table></div>`;
+  });
+  if((R.terms || []).length) h += `<h2>今日新词</h2><ul class="terms">` + R.terms.map(t => `<li><b>${esc(t.term)}</b>：${esc(t.explain)}</li>`).join("") + `</ul>`;
+  return h;
+}
+function bindRich(R){
+  const upd = () => {
+    $("rxTbl").innerHTML = richTable(R);
+    $("rxReset").textContent = `重置筛选（当前 ${richRows(R).length} 条）`;
+    document.querySelectorAll("#rxCats button").forEach(b => b.classList.toggle("on", b.dataset.cat === R._f.cat));
+  };
+  document.querySelectorAll("#rxCats button").forEach(b => b.onclick = () => { R._f.cat = b.dataset.cat; upd(); });
+  $("rxSrc").onchange = e => { R._f.src = e.target.value; upd(); };
+  $("rxQ").oninput = e => { R._f.q = e.target.value; upd(); };
+  $("rxReset").onclick = () => { R._f = { cat:"全部", src:"全部", q:"" }; $("rxSrc").value = "全部"; $("rxQ").value = ""; upd(); };
 }
 
 /* ---------- 开关与钥匙（改仓库 Variables 的 PAUSED_BOTS） ---------- */
