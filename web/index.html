@@ -2,325 +2,443 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0e10">
 <title>每日情报</title>
 <link rel="alternate" type="application/rss+xml" title="每日情报 · 全部" href="feeds/all.xml">
 <style>
 :root{
-  --bg:#f6f5f1; --panel:#fff; --side:#efede7; --line:#e3e0d8; --text:#22211f; --muted:#7a776f;
-  --accent:#c2410c; --accent-soft:#fdeee5; --sel:#f3efe6; --link:#1d4ed8;
+  --bg:#0e0e10; --side:#121214; --raise:#18181b; --card:#1a1a1e; --hover:#1c1c20; --sel:#232328;
+  --line:#222226; --line2:#2a2a2f; --text:#ececef; --sub:#a1a1aa; --muted:#8b8b93;
+  --blue:#3b82f6; --blue2:#2563eb; --chipbg:#1e293b; --chip:#93c5fd; --link:#7fb0ff; --green:#22c55e; --red:#f87171;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#161615; --panel:#1d1d1b; --side:#191918; --line:#2e2d2a; --text:#e9e6df; --muted:#8f8b82;
-  --accent:#fb923c; --accent-soft:#3a2415; --sel:#26251f; --link:#93b4ff;
-}}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
-button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-.app{display:grid;grid-template-columns:220px 340px 1fr;height:100vh}
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Inter,sans-serif;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
+a{color:var(--link);text-decoration:none}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{width:8px}.scroll::-webkit-scrollbar-thumb{background:#2a2a2f;border-radius:4px}
+.app{display:flex;height:100vh;height:100dvh;overflow:hidden}
+.av{flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+.ico-btn{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.ico-btn:hover{background:var(--hover)}
+.ico-btn.on{background:#26262c}
+
 /* 左栏 */
-.side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}
-.brand{padding:18px 18px 10px;font-weight:700;font-size:17px;letter-spacing:.5px}
-.brand small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
-.feed{display:flex;align-items:center;gap:10px;width:100%;padding:9px 18px;text-align:left;border-left:3px solid transparent}
-.feed:hover{background:var(--sel)}
-.feed.on{background:var(--sel);border-left-color:var(--accent);font-weight:600}
-.feed .ico{width:20px;text-align:center}
-.feed .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.badge{font-size:12px;min-width:22px;padding:0 7px;border-radius:10px;background:var(--accent-soft);color:var(--accent);text-align:center}
-.badge:empty{display:none}
-.sep{height:1px;background:var(--line);margin:8px 18px}
-.side-foot{margin-top:auto;padding:14px 18px;font-size:12px;color:var(--muted)}
-.side-foot a{color:var(--muted)}
+.side{width:320px;flex:none;display:flex;flex-direction:column;background:var(--side);border-right:1px solid var(--line)}
+.side-top{display:flex;align-items:center;gap:10px;padding:18px 18px 12px}
+.side-top h1{flex:1;margin:0;font-size:19px;letter-spacing:.3px}
+.side-top small{font-size:12px;color:var(--muted)}
+.search{display:flex;align-items:center;gap:8px;height:40px;margin:0 14px 10px;padding:0 12px;border-radius:12px;background:var(--hover)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:16px}
+.search input::placeholder{color:#7d7d85}
+.bots{flex:1;padding:0 8px 12px}
+.row{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border-radius:14px}
+.row:hover{background:var(--hover)}
+.row.on{background:var(--sel)}
+.row .av{width:46px;height:46px;font-size:17px}
+.row.paused .av{opacity:.45}
+.row .mid{flex:1;min-width:0}
+.row .l1,.row .l2{display:flex;align-items:center;gap:6px}
+.row .nm{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.paused .nm{color:var(--muted)}
+.row .tm{font-size:12px;color:var(--muted);flex:none}
+.row .pv{flex:1;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--blue);flex:none}
+.ptag{font-size:11px;color:var(--sub);border:1px solid #34343a;border-radius:6px;padding:0 5px;flex:none}
+.side-foot{padding:10px 18px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+.side-foot a{color:var(--muted);text-decoration:underline}
+
 /* 中栏 */
-.list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:var(--panel)}
-.list-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
-.list-head h2{margin:0;font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chip{font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:14px;color:var(--muted)}
-.chip.on{border-color:var(--accent);color:var(--accent)}
-.items{overflow:auto;flex:1}
-.item{display:block;width:100%;text-align:left;padding:12px 16px 12px 26px;border-bottom:1px solid var(--line);position:relative}
-.item:hover{background:var(--sel)}
-.item.on{background:var(--sel)}
-.item.unread::before{content:"";position:absolute;left:11px;top:19px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
-.item .meta{font-size:12px;color:var(--muted)}
-.item .t{font-weight:600;margin:2px 0}
-.item.read .t{font-weight:400;color:var(--muted)}
-.item .ex{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.empty{padding:40px 20px;text-align:center;color:var(--muted)}
-/* 右栏 */
-.reader{overflow:auto;background:var(--panel)}
-.reader-in{max-width:760px;margin:0 auto;padding:28px 36px 80px}
-.reader h1{font-size:24px;line-height:1.35;margin:0 0 6px}
-.reader .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
-.art h2{font-size:18px;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
-.art h3{font-size:16px;margin:22px 0 8px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;gap:12px;height:64px;padding:0 20px;border-bottom:1px solid var(--line);flex:none}
+.hdr .av{width:36px;height:36px}
+.hdr .who{flex:1;min-width:0;display:flex;align-items:center;gap:12px}
+.hdr .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr .st{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr .back{display:none}
+.body{flex:1;padding:24px 20px 40px}
+.wrap{max-width:720px;margin:0 auto}
+.day{text-align:center;font-size:12px;color:#7d7d85;margin:22px 0 12px}
+.msg{display:flex;gap:12px;align-items:flex-start}
+.msg>.av{width:32px;height:32px;font-size:13px}
+.bubble{flex:1;min-width:0;background:var(--raise);border:1px solid #232327;border-radius:18px;border-top-left-radius:6px;padding:16px 18px}
+.greet{color:#d4d4d8}
+.its{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.it{display:block;width:100%}
+.chip{display:inline-block;font-size:12px;color:var(--chip);background:var(--chipbg);border-radius:6px;padding:1px 7px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.it .t{display:block;font-weight:600;margin-top:4px}
+.it .x{display:block;font-size:14px;color:var(--sub)}
+.it:hover .t{color:#fff;text-decoration:underline;text-decoration-color:#555}
+.rcard{display:flex;align-items:center;gap:14px;width:100%;margin-top:16px;padding:14px;border:1px solid var(--line2);border-radius:14px;background:#111113}
+.rcard:hover{border-color:#3a3a42}
+.rcard .ic{width:44px;height:44px;flex:none;border-radius:10px;background:#222228;display:flex;align-items:center;justify-content:center}
+.rcard .tx{flex:1;min-width:0}
+.rcard .t{display:block;font-weight:600}
+.rcard .s{display:block;font-size:13px;color:var(--muted)}
+.rcard .go{font-size:13px;color:var(--chip);flex:none}
+.bubble.old{padding:12px 14px}
+.bubble.old .rcard{margin-top:0}
+.empty{color:var(--muted);text-align:center;padding:18vh 20px 0;line-height:1.8}
+
+/* 阅读 */
+.art h1{font-size:26px;line-height:1.35;margin:0}
+.art .meta{font-size:13px;color:var(--muted);margin:6px 0 20px}
+.art h2{font-size:18px;margin:30px 0 12px;padding-bottom:8px;border-bottom:1px solid #26262b}
+.art h3{font-size:16px;margin:22px 0 8px;color:#d4d4d8}
 .art p,.art li{line-height:1.8}
 .art ul,.art ol{padding-left:22px}
-.art li{margin:6px 0}
-.art a{color:var(--link);text-decoration:none}
+.art li{margin:8px 0}
+.art li::marker{color:#555}
 .art a:hover{text-decoration:underline}
+.art strong{color:#fff}
 .art table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0;display:block;overflow-x:auto}
-.art th,.art td{border:1px solid var(--line);padding:7px 10px;text-align:center;vertical-align:middle}
-.art th{background:var(--sel)}
-.back{display:none}
-.nav{display:flex;gap:10px;margin-top:40px}
-.nav button{flex:1;padding:10px;border:1px solid var(--line);border-radius:8px;color:var(--muted)}
-.nav button:disabled{opacity:.35;cursor:default}
-.hint{color:var(--muted);text-align:center;padding-top:30vh}
-.rss-box{font-size:12px;word-break:break-all}
-/* Bot 设置 */
-.gear{opacity:0;font-size:13px;padding:2px 4px;border-radius:6px;color:var(--muted);line-height:1}
-.feed:hover .gear,.feed.on .gear{opacity:.75}
-.gear:hover{opacity:1!important;background:var(--line)}
-.feed.paused .nm{color:var(--muted)}
-.ptag{font-size:12px;color:var(--muted)}
-#botGear{display:none}
-.prof{text-align:center;padding-top:20px}
-.prof .av{width:96px;height:96px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;
-  font-size:46px;background:var(--sel);border:1px solid var(--line)}
-.prof h1{font-size:24px;margin:0}
-.prof .sub{margin:6px 0 0}
-.sec{font-size:13px;color:var(--muted);margin:30px 0 10px;padding-left:4px}
-.card{display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:14px;background:var(--sel);border:1px solid var(--line);text-align:left}
-.card+.card{margin-top:10px}
-.card .ci{font-size:20px;width:26px;text-align:center;color:var(--muted)}
+.art th,.art td{border:1px solid #2a2a2f;padding:7px 10px;vertical-align:top}
+.art th{background:#1a1a1e}
+.art code{background:#1f1f24;border-radius:4px;padding:1px 5px}
+.endbar{display:flex;gap:10px;margin-top:36px}
+.endbar button{flex:1;height:46px;border-radius:12px}
+.btn-ghost{border:1px solid var(--line2)!important;background:#151518!important;color:var(--sub)}
+.btn-pri{background:var(--blue2)!important;color:#fff;font-weight:600}
+
+/* 右栏 */
+.panel{width:340px;flex:none;border-left:1px solid var(--line);background:var(--side);padding:28px 20px 40px}
+.app.noinfo .panel{display:none}
+.pback{display:none;align-items:center;gap:6px;height:44px;padding:0 10px 0 4px;margin:-14px 0 6px}
+.prof{text-align:center}
+.prof .av{width:88px;height:88px;font-size:34px;margin:0 auto}
+.prof .nm{font-size:22px;font-weight:700;margin-top:12px}
+.prof .ds{font-size:13px;color:var(--muted);margin-top:2px}
+.tabs{display:flex;justify-content:center;gap:6px;margin:20px 0 6px}
+.tabs button{height:36px;padding:0 16px;border-radius:10px;color:var(--muted)}
+.tabs button.on{background:#26262c;color:var(--text)}
+.sec{font-size:13px;color:var(--muted);margin:22px 4px 8px}
+.card{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;background:var(--card);border:1px solid #26262b}
 .card .cb{flex:1;min-width:0}
 .card .ct{font-weight:600}
-.card .cs{font-size:13px;color:var(--muted);word-break:break-all}
-.card a{color:var(--link);text-decoration:none}
-.prof-msg{font-size:13px;margin-top:10px;min-height:1.4em;text-align:left;padding-left:4px}
-.tog{width:48px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:.2s}
-.tog::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-.tog.on{background:#16a34a}.tog.on::after{left:23px}
-.tog:disabled{opacity:.5}
-.box{border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0;background:var(--sel)}
-.box ol{padding-left:20px;margin:6px 0}.box li{margin:6px 0}
-.inp{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:inherit}
-.btn{padding:9px 18px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600}
-.btn2{padding:6px 12px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:13px}
-.msg{font-size:13px;margin-top:10px;min-height:1.4em}
-@media (max-width:900px){ .gear{display:none} #botGear{display:inline-block} }
-/* 手机 */
-@media (max-width:900px){
-  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:100vh}
-  .side{align-items:center}
-  .side{border-right:0;border-bottom:1px solid var(--line);flex-direction:row;overflow-x:auto;white-space:nowrap}
-  .brand,.sep,.side-foot{display:none}
-  .feed{width:auto;padding:10px 14px;border-left:0;border-bottom:3px solid transparent}
-  .feed.on{border-bottom-color:var(--accent)}
-  .app.reading .side,.app.reading .list{display:none}
-  .app:not(.reading) .reader{display:none}
-  .reader-in{padding:16px 18px 60px}
-  .back{display:inline-block;margin-bottom:14px;color:var(--accent)}
-  .list{border-right:0}
+.card .cs{font-size:13px;color:var(--muted)}
+.kv{display:flex;flex-direction:column;gap:8px;font-size:14px;padding:14px 16px;border-radius:16px;background:var(--card);border:1px solid #26262b}
+.kv div{display:flex;justify-content:space-between;gap:10px}
+.kv span:first-child{color:var(--sub)}
+.tog{width:50px;height:30px;flex:none;border-radius:15px;position:relative;background:#3f3f46;transition:background .2s}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s}
+.tog.on{background:var(--green)}.tog.on::after{left:23px}
+.tog:disabled{opacity:.5;cursor:default}
+.wide-btn{text-align:center;width:100%;height:44px;margin-top:12px;border:1px solid var(--line2)!important;border-radius:12px;background:#151518!important}
+.wide-btn:disabled{opacity:.6;cursor:default}
+.note{font-size:13px;margin:10px 4px 0;min-height:1.2em;line-height:1.6}
+.note.err{color:var(--red)}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hist button{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--card)}
+.hist button:hover{background:#202025}
+.hist .d{flex:1}
+.hist .n{font-size:12px;color:var(--muted)}
+.rss{padding:12px 14px;border-radius:12px;background:var(--card);font-size:13px;word-break:break-all;color:var(--sub)}
+.box{padding:16px;border-radius:16px;background:var(--card);border:1px solid #26262b;font-size:14px;line-height:1.7}
+.box ol{padding-left:20px;margin:8px 0}.box li{margin:6px 0}
+.box code{background:#26262c;border-radius:4px;padding:0 4px}
+.inp{width:100%;margin-top:6px;padding:11px;border:1px solid var(--line2);border-radius:10px;background:#111113;color:var(--text);font:inherit;font-size:16px}
+.pri-sm{height:42px;padding:0 20px;margin-top:10px;border-radius:10px;background:var(--blue2);color:#fff;font-weight:600}
+.link-sm{font-size:13px;color:var(--muted);text-decoration:underline}
+
+/* 手机：一次一层 */
+@media (max-width:899px){
+  .side,.panel{width:100%;border:0}
+  .app[data-scr=list] .main,.app[data-scr=list] .panel{display:none}
+  .app[data-scr=chat] .side,.app[data-scr=chat] .panel{display:none}
+  .app[data-scr=profile] .side,.app[data-scr=profile] .main{display:none}
+  .app.noinfo[data-scr=profile] .panel{display:block}
+  .hdr{padding:0 8px;gap:8px}
+  .hdr .back{display:flex}
+  .body{padding:12px 12px calc(40px + env(safe-area-inset-bottom))}
+  .msg>.av{display:none}
+  .bubble{border-top-left-radius:18px;padding:14px 16px}
+  .panel{padding:14px 16px calc(40px + env(safe-area-inset-bottom))}
+  .pback{display:flex}
+  .art h1{font-size:22px}
+  .side-top h1{font-size:24px}
 }
 </style>
 </head>
 <body>
-<div class="app" id="app">
-  <nav class="side" id="side"></nav>
-  <section class="list">
-    <div class="list-head">
-      <h2 id="listTitle">全部</h2>
-      <button class="chip" id="unreadOnly">只看未读</button>
-      <button class="chip" id="markAll">全部已读</button>
-      <button class="chip" id="botGear">⚙️ 设置</button>
-    </div>
-    <div class="items" id="items"></div>
-  </section>
-  <main class="reader" id="reader"><div class="hint">← 选一份报告开始阅读</div></main>
+<div class="app" id="app" data-scr="list">
+  <aside class="side">
+    <div class="side-top"><h1>每日情报</h1><small id="built"></small></div>
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="搜索 Bot 或报告" aria-label="搜索">
+    </label>
+    <div class="bots scroll" id="bots"></div>
+    <div class="side-foot">RSS：<a href="feeds/all.xml" target="_blank">全部报告</a> · 单个 Bot 在右侧资料库</div>
+  </aside>
+  <main class="main">
+    <header class="hdr" id="hdr"></header>
+    <div class="body scroll" id="body"></div>
+  </main>
+  <aside class="panel scroll" id="panel"></aside>
 </div>
 <script>
-const S = {data:null, bot:"all", onlyUnread:false, cur:null};
-const store = {
-  get(){ try{ return new Set(JSON.parse(localStorage.getItem("df_read")||"[]")); }catch(e){ return S._mem||(S._mem=new Set()); } },
-  set(s){ S._mem=s; try{ localStorage.setItem("df_read", JSON.stringify([...s])); }catch(e){} }
-};
-let READ = store.get();
 const $ = id => document.getElementById(id);
-const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const botOf = id => S.data.bots.find(b => b.id === id) || {name:id, icon:"•"};
-const fmtDate = d => { const w="日一二三四五六"[new Date(d+"T12:00:00Z").getUTCDay()]; return d.slice(5).replace("-","月")+"日 周"+w; };
-
-function visible(){
-  return S.data.items.filter(it => (S.bot==="all"||it.bot===S.bot) && (!S.onlyUnread||!READ.has(it.id)||it.id===S.cur));
-}
-function renderSide(){
-  const cnt = b => S.data.items.filter(it => (b==="all"||it.bot===b) && !READ.has(it.id)).length || "";
-  const paused = id => S.paused && S.paused.list.includes(id);
-  const row = (id,icon,name) => `<button class="feed ${S.bot===id?"on":""} ${paused(id)?"paused":""}" data-bot="${id}"><span class="ico">${icon}</span><span class="nm">${name}</span>${paused(id)?'<span class="ptag" title="已暂停">⏸</span>':""}<span class="badge">${cnt(id)}</span>${id==="all"?"":`<span class="gear" data-gear="${id}" title="设置">⚙️</span>`}</button>`;
-  $("side").innerHTML = `<div class="brand">每日情报<small>更新于 ${S.data.built}</small></div>`
-    + row("all","📰","全部") + `<div class="sep"></div>`
-    + S.data.bots.map(b => row(b.id,b.icon,b.name)).join("")
-    + `<div class="side-foot">RSS 订阅：<br><a href="feeds/all.xml" target="_blank">全部</a> · 单个 Bot 在阅读页底部</div>`;
-  $("side").querySelectorAll(".feed").forEach(el => el.onclick = () => { S.bot = el.dataset.bot; renderAll(); });
-  $("side").querySelectorAll(".gear").forEach(el => el.onclick = e => { e.stopPropagation(); S.bot = el.dataset.gear; renderAll(); openProfile(el.dataset.gear); });
-}
-function renderList(){
-  $("listTitle").textContent = S.bot==="all" ? "全部" : botOf(S.bot).name + (S.paused && S.paused.list.includes(S.bot) ? "（已暂停）" : "");
-  $("botGear").style.visibility = S.bot==="all" ? "hidden" : "visible";
-  $("unreadOnly").classList.toggle("on", S.onlyUnread);
-  const its = visible();
-  $("items").innerHTML = its.length ? its.map(it => {
-    const b = botOf(it.bot);
-    return `<button class="item ${READ.has(it.id)?"read":"unread"} ${it.id===S.cur?"on":""}" data-id="${it.id}">
-      <div class="meta">${b.icon} ${esc(b.name)} · ${fmtDate(it.date)}</div>
-      <div class="t">${esc(it.title)}</div><div class="ex">${esc(it.excerpt)}</div></button>`;
-  }).join("") : `<div class="empty">${S.onlyUnread?"没有未读的报告 🎉":"还没有报告"}</div>`;
-  $("items").querySelectorAll(".item").forEach(el => el.onclick = () => { location.hash = el.dataset.id; });
-}
-function renderAll(){ renderSide(); renderList(); }
-
-async function open_(id){
-  const it = S.data.items.find(x => x.id === id);
-  if(!it){ return; }
-  S.cur = id; S.prof = null; READ.add(id); store.set(READ);
-  $("app").classList.add("reading");
-  const b = botOf(it.bot);
-  $("reader").innerHTML = `<div class="reader-in"><div class="hint" style="padding-top:20vh">加载中…</div></div>`;
-  let html = "";
-  try{ html = await (await fetch("r/"+id+".html")).text(); }catch(e){ html = "<p>加载失败，请刷新重试。</p>"; }
-  const its = visible(), i = its.findIndex(x => x.id === id);
-  const prev = its[i-1], next = its[i+1];
-  $("reader").innerHTML = `<div class="reader-in">
-    <button class="back" id="back">← 返回列表</button>
-    <h1>${esc(it.title)}</h1><div class="sub">${b.icon} ${esc(b.name)} · ${fmtDate(it.date)}</div>
-    <article class="art">${html}</article>
-    <div class="nav"><button id="pv" ${prev?"":"disabled"}>↑ 上一篇</button><button id="nx" ${next?"":"disabled"}>下一篇 ↓</button></div>
-    <p class="rss-box" style="margin-top:30px;color:var(--muted)">订阅这个 Bot 的 RSS：${location.href.split("#")[0].replace(/index\.html$/,"")}feeds/${it.bot}.xml</p>
-  </div>`;
-  $("reader").scrollTop = 0; window.scrollTo(0,0);
-  $("back").onclick = () => { $("app").classList.remove("reading"); history.replaceState(null,"",location.pathname); S.cur=null; renderAll(); };
-  if(prev) $("pv").onclick = () => location.hash = prev.id;
-  if(next) $("nx").onclick = () => location.hash = next.id;
-  renderAll();
-}
-
-/* ===== Bot 开关：改仓库 Variables 里的 PAUSED_BOTS ===== */
-const REPO = location.hostname.endsWith(".github.io")
-  ? location.hostname.split(".")[0] + "/" + (location.pathname.split("/")[1] || "daily-fetch")
-  : "niukutzu/daily-fetch";
-const API = "https://api.github.com/repos/" + REPO + "/actions/variables";
-const tok = {
-  get(){ try{ return localStorage.getItem("df_gh_token") || S._tok || ""; }catch(e){ return S._tok || ""; } },
-  set(v){ S._tok = v; try{ v ? localStorage.setItem("df_gh_token", v) : localStorage.removeItem("df_gh_token"); }catch(e){} }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const IC = {
+  back:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+  panel:'<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>',
+  doc:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg>',
+  clock:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
 };
-async function gh(method, url, body){
-  const r = await fetch(url, {method, headers:{
-    "Authorization":"Bearer " + tok.get(), "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"},
-    body: body ? JSON.stringify(body) : undefined});
-  if(r.status === 401) throw new Error("钥匙无效或已过期，请点下面「换一把钥匙」重新填");
-  if(r.status === 403) throw new Error("钥匙权限不够：创建时要选 daily-fetch 仓库，Variables 要选 Read and write");
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+const READ = new Set(ls.get("df_read", []));
+const saveRead = () => ls.set("df_read", [...READ]);
+const S = { data:null, sel:null, reading:null, scr:"list", depth:0, tab:"feed", q:"", paused:null, note:"", noteErr:false, busy:false, tokenForm:false,
+  showInfo: ls.get("df_info", true) };
+const narrow = () => matchMedia("(max-width:899px)").matches;
+
+/* ---------- 日期 ---------- */
+const WD = "日一二三四五六";
+const dObj = d => new Date(d + "T12:00:00+08:00");
+const todayStr = () => new Date(Date.now() + 8*3600e3).toISOString().slice(0,10);
+const md = d => `${+d.slice(5,7)}月${+d.slice(8,10)}日`;
+const wk = d => "周" + WD[dObj(d).getUTCDay()];
+function rel(d){
+  const diff = Math.round((dObj(todayStr()) - dObj(d)) / 864e5);
+  if(diff === 0) return "今天"; if(diff === 1) return "昨天";
+  if(diff > 1 && diff < 7) return wk(d);
+  return `${+d.slice(5,7)}/${+d.slice(8,10)}`;
+}
+
+/* ---------- 数据 ---------- */
+const bot = id => S.data.bots.find(b => b.id === id);
+const reps = id => S.data.items.filter(x => x.bot === id).sort((a,b) => a.date < b.date ? 1 : -1); // 新→旧
+const latest = id => reps(id)[0];
+const isPaused = id => !!(S.paused && S.paused.list.includes(id));
+const av = (b, cls="") => `<span class="av ${cls}" style="background:${esc(b.color)}">${esc(b.ch)}</span>`;
+const mins = r => Math.max(1, Math.round((r.words || 1500) / 500));
+
+/* ---------- 导航（手机返回键也能用） ---------- */
+function go(patch, push=true){
+  Object.assign(S, patch);
+  if(S.reading){ READ.add(S.reading); saveRead(); }
+  if(push) S.depth++;
+  const st = { sel:S.sel, reading:S.reading, scr:S.scr, depth:S.depth };
+  const url = location.pathname + location.search + (S.reading ? "#" + S.reading : "");
+  push ? history.pushState(st, "", url) : history.replaceState(st, "", url);
+  render();
+}
+window.addEventListener("popstate", e => {
+  const st = e.state || { sel:S.sel, reading:null, scr: narrow() ? "list" : "chat", depth:0 };
+  Object.assign(S, st); render();
+});
+const pickBot = id => { S.note = ""; S.tokenForm = false; go({ sel:id, reading:null, scr:"chat" }, narrow() || S.reading); };
+const openRep = id => { const r = S.data.items.find(x => x.id === id); if(r) go({ sel:r.bot, reading:id, scr:"chat" }); };
+const backBtn = () => (history.state && history.state.depth > 0) ? history.back()
+  : go({ reading:null, scr: S.reading || S.scr === "profile" ? "chat" : "list" }, false);
+
+/* ---------- 渲染 ---------- */
+function render(){
+  const app = $("app");
+  app.dataset.scr = S.scr;
+  app.classList.toggle("noinfo", !S.showInfo);
+  renderSide(); renderHdr(); renderBody(); renderPanel();
+}
+
+function renderSide(){
+  const q = S.q.trim().toLowerCase();
+  const list = S.data.bots.filter(b => !q || b.name.toLowerCase().includes(q) ||
+    reps(b.id).some(r => r.title.toLowerCase().includes(q) || (r.items||[]).some(i => (i.title + i.text).toLowerCase().includes(q))));
+  $("bots").innerHTML = list.length ? list.map(b => {
+    const r = latest(b.id), p = isPaused(b.id);
+    const pv = r ? (r.items && r.items[0] ? r.items[0].title : r.excerpt) : `还没有报告 · ${b.sched}`;
+    return `<button class="row ${b.id === S.sel && !narrow() ? "on" : ""} ${p ? "paused" : ""}" data-bot="${b.id}">
+      ${av(b)}<span class="mid"><span class="l1"><span class="nm">${esc(b.name)}</span><span class="tm">${r ? rel(r.date) : ""}</span></span>
+      <span class="l2"><span class="pv">${esc(pv)}</span>${r && !READ.has(r.id) ? '<span class="dot" aria-label="未读"></span>' : ""}${p ? '<span class="ptag">已暂停</span>' : ""}</span></span></button>`;
+  }).join("") : `<div class="empty" style="padding-top:40px">没有找到「${esc(S.q)}」</div>`;
+  $("bots").querySelectorAll(".row").forEach(el => el.onclick = () => pickBot(el.dataset.bot));
+}
+
+function renderHdr(){
+  const b = bot(S.sel); if(!b){ $("hdr").innerHTML = ""; return; }
+  const st = isPaused(b.id) ? "已暂停 · 不会自动运行" : b.sched + " 自动运行";
+  $("hdr").innerHTML = `${S.reading || narrow() ? `<button class="ico-btn ${S.reading ? "" : "back"}" id="hBack" aria-label="返回" style="${S.reading ? "display:flex" : ""}">${IC.back}</button>` : ""}
+    <button class="who" id="hWho">${av(b)}<span style="min-width:0;text-align:left"><span class="nm" style="display:block">${esc(b.name)}</span><span class="st" style="display:block">${esc(st)}${narrow() ? " · 点这里看设置" : ""}</span></span></button>
+    <button class="ico-btn ${S.showInfo && !narrow() ? "on" : ""}" id="hInfo" aria-label="Bot 资料">${IC.panel}</button>`;
+  if($("hBack")) $("hBack").onclick = backBtn;
+  const toProfile = () => narrow() ? go({ scr:"profile" }) : (S.showInfo = !S.showInfo, ls.set("df_info", S.showInfo), render());
+  $("hInfo").onclick = toProfile;
+  $("hWho").onclick = () => narrow() ? go({ scr:"profile" }) : (S.showInfo = true, ls.set("df_info", true), render());
+}
+
+function renderBody(){
+  const body = $("body"), b = bot(S.sel);
+  if(!b){ body.innerHTML = ""; return; }
+  if(S.reading) return renderReader();
+  const rs = reps(b.id).slice(0, 14).reverse(); // 旧→新
+  if(!rs.length){ body.innerHTML = `<div class="empty">${esc(b.name)} 还没有报告<br>到 ${esc(b.sched)} 会自动出现在这里</div>`; return; }
+  body.innerHTML = `<div class="wrap">` + rs.map((r, k) => {
+    const full = k >= rs.length - 3 && r.items && r.items.length;
+    const unread = !READ.has(r.id);
+    const card = `<button class="rcard" data-open="${r.id}"><span class="ic">${IC.doc}</span>
+      <span class="tx"><span class="t">${esc(r.title)}</span><span class="s">完整报告 · 约 ${mins(r)} 分钟读完${unread ? " · 未读" : ""}</span></span><span class="go">打开</span></button>`;
+    const day = `<div class="day">${rel(r.date) === "今天" ? "今天 · " : rel(r.date) === "昨天" ? "昨天 · " : ""}${md(r.date)} ${wk(r.date)}</div>`;
+    if(!full) return day + `<div class="msg">${av(b)}<div class="bubble old">${card}</div></div>`;
+    const greet = b.id === "chiangmai" ? `${md(r.date)}起 7 天里值得去的 ${r.items.length} 个活动：` :
+      `${rel(r.date) === "今天" ? "早上好！今天" : md(r.date)}的 ${r.items.length} 条必看：`;
+    return day + `<div class="msg">${av(b)}<div class="bubble"><div class="greet">${esc(greet)}</div><div class="its">` +
+      r.items.map(i => `<button class="it" data-open="${r.id}">${i.tag ? `<span class="chip">${esc(i.tag)}</span>` : ""}<span class="t">${esc(i.title)}</span>${i.text ? `<span class="x">${esc(i.text)}</span>` : ""}</button>`).join("") +
+      `</div>${card}</div></div>`;
+  }).join("") + `</div>`;
+  body.querySelectorAll("[data-open]").forEach(el => el.onclick = () => openRep(el.dataset.open));
+  body.scrollTop = body.scrollHeight;
+}
+
+async function renderReader(){
+  const body = $("body"), id = S.reading, r = S.data.items.find(x => x.id === id), b = bot(r.bot);
+  body.innerHTML = `<div class="wrap"><div class="empty">加载中…</div></div>`;
+  let html;
+  try{ html = await (await fetch("r/" + id + ".html")).text(); }catch(e){ html = "<p>加载失败，请刷新重试。</p>"; }
+  if(S.reading !== id) return;
+  const next = S.data.bots.find(x => x.id !== b.id && latest(x.id) && !READ.has(latest(x.id).id));
+  body.innerHTML = `<article class="wrap art"><h1>${esc(r.title)}</h1><div class="meta">${esc(b.name)} · ${md(r.date)} ${wk(r.date)} · 约 ${mins(r)} 分钟</div>
+    ${html}
+    <div class="endbar"><button class="btn-ghost" id="rBack">返回对话</button>
+    <button class="btn-pri" id="rNext">${next ? "下一个未读：" + esc(next.name) : "全部读完了"}</button></div></article>`;
+  body.scrollTop = 0;
+  $("rBack").onclick = backBtn;
+  $("rNext").onclick = () => next ? openRep(latest(next.id).id) : go({ reading:null, scr: narrow() ? "list" : "chat" });
+  renderSide();
+}
+
+/* ---------- 开关与钥匙（改仓库 Variables 的 PAUSED_BOTS） ---------- */
+const REPO = location.hostname.endsWith(".github.io")
+  ? location.hostname.split(".")[0] + "/" + (location.pathname.split("/")[1] || "daily-fetch") : "niukutzu/daily-fetch";
+const API = "https://api.github.com/repos/" + REPO + "/actions";
+const tok = { get(){ try{ return localStorage.getItem("df_gh_token") || ""; }catch(e){ return S._tok || ""; } },
+  set(v){ S._tok = v; try{ v ? localStorage.setItem("df_gh_token", v) : localStorage.removeItem("df_gh_token"); }catch(e){} } };
+const TOKEN_URL = "https://github.com/settings/personal-access-tokens/new?name=" + encodeURIComponent("daily-fetch 开关")
+  + "&description=" + encodeURIComponent("每日情报网站：暂停/恢复 Bot、立即运行") + "&target_name=" + REPO.split("/")[0]
+  + "&expires_in=none&actions_variables=write&actions=write";
+async function gh(method, path, body){
+  const r = await fetch(API + path, { method, headers:{ Authorization:"Bearer " + tok.get(), Accept:"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" },
+    body: body ? JSON.stringify(body) : undefined });
+  if(r.status === 401) throw new Error("钥匙无效或已过期，请重新设置钥匙");
   return r;
 }
-async function readPaused(){
-  const r = await gh("GET", API + "/PAUSED_BOTS");
-  if(r.status === 404) return {exists:false, list:[]};
-  if(!r.ok) throw new Error("读取失败（" + r.status + "）");
-  const v = (await r.json()).value || "";
-  return {exists:true, list: v.split(/[,，\s]+/).filter(Boolean)};
-}
-async function writePaused(list, exists){
-  const value = list.join(",");
-  let r;
-  if(!list.length) r = await gh("DELETE", API + "/PAUSED_BOTS");
-  else if(exists) r = await gh("PATCH", API + "/PAUSED_BOTS", {name:"PAUSED_BOTS", value});
-  else r = await gh("POST", API, {name:"PAUSED_BOTS", value});
-  if(!r.ok && r.status !== 404) throw new Error("保存失败（" + r.status + "）");
-}
-const TOKEN_URL = "https://github.com/settings/personal-access-tokens/new?name=" + encodeURIComponent("daily-fetch 开关")
-  + "&description=" + encodeURIComponent("每日情报网站上的 Bot 暂停开关，只能改 Variables")
-  + "&target_name=" + REPO.split("/")[0] + "&expires_in=none&actions_variables=write";
-
-const SCHED = {tech:"每天 08:00", politics:"每天 08:15", finance:"每天 08:30", reddit:"每天 08:45", music:"每天 09:00",
-  commerce:"每天 09:15", chiangmai:"每周三 09:30", events:"每周四 09:30", releases:"每周六 09:30"};
-S.paused = null;
 async function loadPaused(){
   if(!tok.get()) return;
-  try{ S.paused = await readPaused(); renderAll(); }catch(e){ S.pausedErr = e.message; }
+  try{
+    const r = await gh("GET", "/variables/PAUSED_BOTS");
+    if(r.status === 404) S.paused = { exists:false, list:[] };
+    else if(r.ok) S.paused = { exists:true, list: ((await r.json()).value || "").split(/[,，\s]+/).filter(Boolean) };
+    else throw new Error(r.status === 403 ? "钥匙权限不够：要选 daily-fetch 仓库，Variables 选 Read and write" : "读取开关失败（" + r.status + "）");
+  }catch(e){ S.note = e.message; S.noteErr = true; }
+  render();
 }
-const TITLES = {tech:"全球科技每日精选", politics:"国际政治每日精选", finance:"全球金融每日精选", reddit:"Reddit 每日精选",
-  music:"电音与 DJ 每日精选", commerce:"海外商业与套利每日精选", chiangmai:"清迈未来 7 天活动", events:"演出与艺文每周排期", releases:"每周六全球音乐发行盘点"};
-async function openProfile(id){
-  const b = botOf(id);
-  S.cur = null; S.prof = id; $("app").classList.add("reading");
-  const its = S.data.items.filter(x => x.bot === id);
-  const rss = location.href.split("#")[0].replace(/index\.html$/,"") + "feeds/" + id + ".xml";
-  const draw = (msg, busy) => {
-    if(S.prof !== id) return;
-    const known = !!S.paused, on = known ? !S.paused.list.includes(id) : true;
-    $("reader").innerHTML = `<div class="reader-in"><button class="back" id="back">← 返回列表</button>
-      <div class="prof"><div class="av">${b.icon}</div><h1>${esc(b.name)}</h1>
-      <div class="sub">${its.length ? `共 ${its.length} 份报告 · 最新 ${fmtDate(its[0].date)}` : "还没有报告"}</div></div>
-      <div class="sec">即将进行</div>
-      <div class="card"><span class="ci">🕘</span><div class="cb"><div class="ct">${esc(TITLES[id] || b.name)}</div>
-        <div class="cs">${tok.get() && !known ? "读取中…" : on ? (SCHED[id] || "") + " 左右" : "已暂停，到点不会运行"}</div></div>
-        <button class="tog ${on ? "on" : ""}" id="tg" ${busy || (tok.get() && !known) ? "disabled" : ""} aria-label="定时运行"></button></div>
-      <div class="prof-msg">${msg || ""}</div>
-      <div class="sec">订阅</div>
-      <div class="card"><span class="ci">📡</span><div class="cb"><div class="ct">RSS</div><div class="cs"><a href="${rss}" target="_blank">${esc(rss)}</a></div></div></div>
-      ${tok.get() ? `<p style="margin-top:30px;text-align:center"><button class="btn2" id="tokReset">换一把钥匙</button></p>` : ""}
-    </div>`;
-    $("reader").scrollTop = 0;
-    $("back").onclick = () => { S.prof = null; $("app").classList.remove("reading"); renderAll(); };
-    if($("tokReset")) $("tokReset").onclick = () => { tok.set(""); S.paused = null; renderAll(); draw(); };
-    $("tg").onclick = async () => {
-      if(!tok.get()) return showTokenForm();
-      const list = S.paused.list.includes(id) ? S.paused.list.filter(x => x !== id) : [...S.paused.list, id];
-      draw("保存中…", true);
-      try{ await writePaused(list, S.paused.exists); S.paused = {exists: list.length > 0, list}; renderAll(); draw("✅ 已保存"); }
-      catch(e){ draw(`<span style="color:#dc2626">${esc(e.message)}</span>`); }
-    };
-  };
-  draw();
-  if(tok.get() && !S.paused){
-    try{ S.paused = await readPaused(); renderAll(); draw(); }
-    catch(e){ S.paused = null; draw(`<span style="color:#dc2626">${esc(e.message)}</span>`); }
-  }
+async function togglePause(id){
+  if(!tok.get()){ S.tokenForm = true; return renderPanel(); }
+  if(!S.paused) return;
+  const list = isPaused(id) ? S.paused.list.filter(x => x !== id) : [...S.paused.list, id];
+  S.busy = true; S.note = "保存中…"; S.noteErr = false; renderPanel();
+  try{
+    let r;
+    if(!list.length) r = await gh("DELETE", "/variables/PAUSED_BOTS");
+    else if(S.paused.exists) r = await gh("PATCH", "/variables/PAUSED_BOTS", { name:"PAUSED_BOTS", value:list.join(",") });
+    else r = await gh("POST", "/variables", { name:"PAUSED_BOTS", value:list.join(",") });
+    if(r.status === 403) throw new Error("钥匙权限不够：要选 daily-fetch 仓库，Variables 选 Read and write");
+    if(!r.ok && r.status !== 404) throw new Error("保存失败（" + r.status + "）");
+    S.paused = { exists: list.length > 0, list };
+    S.note = list.includes(id) ? "✅ 已暂停，到点不会运行" : "✅ 已恢复运行"; S.noteErr = false;
+  }catch(e){ S.note = e.message; S.noteErr = true; }
+  S.busy = false; render();
 }
-function showTokenForm(err){
-  S.cur = null; $("app").classList.add("reading");
-  $("reader").innerHTML = `<div class="reader-in"><button class="back" id="back">← 返回列表</button>
-    <h1>设置钥匙</h1><div class="sub">设置后，点左边每个 Bot 旁的 ⚙️ 就能暂停或恢复它。</div>
-    <div class="box"><ol>
-      <li>点这里：<a href="${TOKEN_URL}" target="_blank" rel="noopener" style="color:var(--link)">打开 GitHub 创建钥匙的页面</a>（名字和权限已经帮你填好了）</li>
-      <li>找到 <b>Repository access</b>，选 <b>Only select repositories</b>，再在下拉框里选 <b>daily-fetch</b></li>
-      <li>拉到最下面，点绿色按钮 <b>Generate token</b>，弹窗里再点一次确认</li>
-      <li>复制出现的那串 <code>github_pat_</code> 开头的字，粘贴到下面，点「保存」</li>
+async function runNow(id){
+  if(!tok.get()){ S.tokenForm = true; return renderPanel(); }
+  S.busy = true; S.note = "正在通知 GitHub…"; S.noteErr = false; renderPanel();
+  try{
+    const r = await gh("POST", "/workflows/daily.yml/dispatches", { ref:"main", inputs:{ bot:id } });
+    if(r.status === 403 || r.status === 404) throw new Error("现在这把钥匙没有「运行」权限。点下面「重新设置钥匙」，按步骤生成一把新的就行（新链接已经包含这个权限）。");
+    if(!r.ok) throw new Error("启动失败（" + r.status + "）");
+    S.note = "✅ 已开始运行，大约 3～5 分钟后刷新网站就能看到新报告"; S.noteErr = false;
+  }catch(e){ S.note = e.message; S.noteErr = true; }
+  S.busy = false; renderPanel();
+}
+
+function tokenFormHtml(){
+  return `<div class="sec">设置钥匙（每台手机或电脑做一次）</div><div class="box">
+    设置后就能在这里暂停、恢复 Bot，或者立即运行一次。
+    <ol>
+      <li><a href="${TOKEN_URL}" target="_blank" rel="noopener">点这里打开 GitHub 创建钥匙的页面</a>（名字和权限已经帮你填好了）</li>
+      <li>找到 <b>Repository access</b>，选 <b>Only select repositories</b>，下拉框里选 <b>daily-fetch</b></li>
+      <li>拉到最下面点绿色 <b>Generate token</b>，弹窗里再确认一次</li>
+      <li>复制以 <code>github_pat_</code> 开头的那串字，粘贴到下面，点「保存」</li>
     </ol>
-    <input class="inp" id="tokIn" placeholder="github_pat_……" autocomplete="off">
-    <div style="margin-top:10px"><button class="btn" id="tokSave">保存</button></div>
-    <div class="msg" id="msg" style="color:#dc2626">${err ? esc(err) : ""}</div>
-    <p style="font-size:12px;color:var(--muted);margin:10px 0 0">钥匙只存在这台设备的浏览器里，不会上传。它只能改 Bot 开关，改不了代码，也看不到你的 AI 密钥。</p></div></div>`;
-  $("reader").scrollTop = 0; window.scrollTo(0,0);
-  $("back").onclick = () => { $("app").classList.remove("reading"); renderAll(); };
-  $("tokSave").onclick = async () => {
+    <input class="inp" id="tokIn" placeholder="github_pat_……" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div style="display:flex;align-items:center;gap:14px"><button class="pri-sm" id="tokSave">保存</button>${tok.get() ? '<button class="link-sm" id="tokCancel" style="margin-top:10px">取消</button>' : ""}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">钥匙只存在这台设备的浏览器里，不会上传。它只能改开关和启动运行，改不了代码，也看不到你的 AI 密钥。</div></div>`;
+}
+
+function renderPanel(){
+  const b = bot(S.sel), el = $("panel"); if(!b){ el.innerHTML = ""; return; }
+  const rs = reps(b.id), r = rs[0], on = !isPaused(b.id), known = !tok.get() || !!S.paused;
+  const rss = location.href.split("#")[0].replace(/index\.html$/, "") + "feeds/" + b.id + ".xml";
+  let html = `<button class="pback" id="pBack">${IC.back}返回</button>
+    <div class="prof">${av(b)}<div class="nm">${esc(b.name)}</div><div class="ds">${esc(b.desc)}</div></div>
+    <div class="tabs"><button class="${S.tab === "feed" ? "on" : ""}" data-tab="feed">动态</button><button class="${S.tab === "lib" ? "on" : ""}" data-tab="lib">资料库</button></div>`;
+  if(S.tab === "feed"){
+    html += `<div class="sec">即将进行</div>
+      <div class="card">${IC.clock}<div class="cb"><div class="ct">${esc(b.title)}</div>
+        <div class="cs">${!known ? "读取中…" : on ? esc(b.sched) + " 左右" : "已暂停，到点不会运行"}</div></div>
+        <button class="tog ${on ? "on" : ""}" id="tog" role="switch" aria-checked="${on}" aria-label="定时运行" ${S.busy || !known ? "disabled" : ""}></button></div>
+      <div class="note ${S.noteErr ? "err" : ""}">${esc(S.note)}</div>
+      <div class="sec">最近一次</div>
+      <div class="kv"><div><span>报告日期</span><span>${r ? md(r.date) + " " + wk(r.date) : "还没有"}</span></div>
+        <div><span>报告总数</span><span>${rs.length} 份</span></div>
+        <div><span>状态</span><span style="color:${on ? "#4ade80" : "var(--sub)"}">${on ? "正常运行" : "已暂停"}</span></div></div>
+      <button class="wide-btn" id="runNow" ${S.busy ? "disabled" : ""}>立即运行一次</button>`;
+    if(S.tokenForm || (S.noteErr && /钥匙/.test(S.note))) html += tokenFormHtml();
+    else if(tok.get()) html += `<p style="text-align:center;margin-top:24px"><button class="link-sm" id="tokReset">重新设置钥匙</button></p>`;
+  } else {
+    html += `<div class="sec">历史报告（${rs.length}）</div><div class="hist">` +
+      (rs.length ? rs.map(x => `<button data-open="${x.id}"><span class="d">${md(x.date)} ${wk(x.date)}</span><span class="n">${READ.has(x.id) ? "已读" : "未读"}</span></button>`).join("") : `<div class="note">还没有报告</div>`) +
+      `</div><div class="sec">RSS 订阅</div><div class="rss">${esc(rss)}</div>
+      <button class="wide-btn" id="copyRss">复制 RSS 地址</button>`;
+  }
+  el.innerHTML = html;
+  $("pBack").onclick = backBtn;
+  el.querySelectorAll("[data-tab]").forEach(t => t.onclick = () => { S.tab = t.dataset.tab; renderPanel(); });
+  el.querySelectorAll("[data-open]").forEach(t => t.onclick = () => openRep(t.dataset.open));
+  if($("tog")) $("tog").onclick = () => togglePause(b.id);
+  if($("runNow")) $("runNow").onclick = () => runNow(b.id);
+  if($("tokReset")) $("tokReset").onclick = () => { S.tokenForm = true; S.note = ""; renderPanel(); };
+  if($("tokCancel")) $("tokCancel").onclick = () => { S.tokenForm = false; S.note = ""; S.noteErr = false; renderPanel(); };
+  if($("tokSave")) $("tokSave").onclick = async () => {
     const v = $("tokIn").value.trim(); if(!v) return;
-    tok.set(v); $("msg").style.color = "var(--muted)"; $("msg").textContent = "检查中…";
-    try{ S.paused = await readPaused(); }catch(e){ tok.set(""); $("msg").style.color = "#dc2626"; $("msg").textContent = e.message; return; }
-    renderAll();
-    if(S.bot !== "all") return openProfile(S.bot);
-    $("reader").querySelector(".reader-in").innerHTML = `<h1>✅ 钥匙设置好了</h1><div class="sub">现在点左边任意 Bot 旁的 ⚙️（手机上是列表顶部的「⚙️ 设置」）就能暂停或恢复它。</div>`;
+    tok.set(v); S.tokenForm = false; S.paused = null; S.note = "检查钥匙…"; S.noteErr = false; renderPanel();
+    await loadPaused();
+    if(!S.noteErr){ S.note = "✅ 钥匙设置好了"; renderPanel(); }
+  };
+  if($("copyRss")) $("copyRss").onclick = async () => {
+    try{ await navigator.clipboard.writeText(rss); $("copyRss").textContent = "✅ 已复制"; }catch(e){ $("copyRss").textContent = "复制失败，请手动长按复制"; }
   };
 }
-$("botGear").onclick = () => openProfile(S.bot);
 
-$("unreadOnly").onclick = () => { S.onlyUnread = !S.onlyUnread; renderList(); };
-$("markAll").onclick = () => { visible().forEach(it => READ.add(it.id)); store.set(READ); renderAll(); };
-window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if(id) open_(id); });
-document.addEventListener("keydown", e => {
-  if(!S.cur || e.target.tagName==="INPUT") return;
-  if(e.key==="j"||e.key==="ArrowDown"&&e.altKey){ const n=$("nx"); n&&!n.disabled&&n.click(); }
-  if(e.key==="k"){ const p=$("pv"); p&&!p.disabled&&p.click(); }
-});
-
-fetch("data.json?"+Date.now()).then(r => r.json()).then(d => {
-  S.data = d; renderAll(); loadPaused();
-  const id = location.hash.slice(1);
-  if(id) open_(id);
-}).catch(() => { $("items").innerHTML = '<div class="empty">数据加载失败，请刷新</div>'; });
+/* ---------- 启动 ---------- */
+$("q").oninput = e => { S.q = e.target.value; renderSide(); };
+let wasNarrow = narrow();
+addEventListener("resize", () => { if(narrow() !== wasNarrow){ wasNarrow = narrow(); render(); } });
+fetch("data.json?" + Date.now()).then(r => r.json()).then(d => {
+  S.data = d;
+  $("built").textContent = d.built.slice(5, 10).replace("-", "月") + "日 更新";
+  const hash = location.hash.slice(1), hit = d.items.find(x => x.id === hash);
+  if(hit){ go({ sel:hit.bot, reading:hit.id, scr:"chat" }, false); }
+  else {
+    const first = d.bots.find(b => latest(b.id) && !READ.has(latest(b.id).id)) || d.bots.find(b => latest(b.id)) || d.bots[0];
+    go({ sel:first.id, reading:null, scr: narrow() ? "list" : "chat" }, false);
+  }
+  loadPaused();
+}).catch(() => { $("bots").innerHTML = '<div class="empty">数据加载失败，请刷新</div>'; });
 </script>
 </body>
 </html>
