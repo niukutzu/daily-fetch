@@ -28,6 +28,13 @@
 
 接口必须是 OpenAI 兼容格式（OpenRouter、各种中转站、Gemini、OpenAI、xAI 都支持）。
 
+## 暂停某个 Bot（不用改代码）
+仓库 → Settings → Secrets and variables → Actions → **Variables** 标签页 → New repository variable：
+- Name 填 `PAUSED_BOTS`
+- Value 填要暂停的 Bot 代号，多个用逗号隔开，例如 `chiangmai` 或 `chiangmai,events`
+
+暂停的 Bot 到点不会运行（不耗 AI 额度），手动运行仍然可以。想恢复：把代号从 Value 里删掉，或者删掉整个变量。
+
 ## 手动运行一次
 Actions → 每日情报 → Run workflow → 选 Bot → 绿色 Run workflow。
 
