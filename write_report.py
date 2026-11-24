@@ -48,7 +48,9 @@ COMMON_RULES = """
 def call_llm(bot: str, system: str, user: str) -> str:
     base = os.environ["LLM_BASE_URL"].rstrip("/")
     key = os.environ["LLM_API_KEY"]
-    model = os.environ.get(f"LLM_MODEL_{bot.upper()}") or os.environ["LLM_MODEL"]
+    model = os.environ.get(f"LLM_MODEL_{bot.upper()}") or os.environ.get("LLM_MODEL")
+    if not model:
+        sys.exit("[出错] 没有读到模型名。请到仓库 Settings → Secrets and variables → Actions → Variables 标签页，新建名为 LLM_MODEL 的变量。")
     body = json.dumps({
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
