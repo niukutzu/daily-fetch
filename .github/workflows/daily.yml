@@ -12,6 +12,10 @@ on:
     - cron: "30 1 * * 3"   # 周三 09:30 清迈活动
     - cron: "30 1 * * 4"   # 周四 09:30 演出与艺文
     - cron: "30 1 * * 6"   # 周六 09:30 音乐发行
+  # 网站代码一改动就自动更新网站（不跑 Bot、不花 AI 额度）
+  push:
+    branches: [main]
+    paths: ["web/**", "build_site.py"]
   workflow_dispatch:
     inputs:
       bot:
@@ -54,6 +58,7 @@ jobs:
             "30 1 * * 6") BOT=releases ;;
             *) BOT="${{ inputs.bot }}" ;;
           esac
+          [ -z "$BOT" ] && BOT=只更新网站
           # 暂停开关：Settings → Secrets and variables → Actions → Variables 里的 PAUSED_BOTS
           # 写 Bot 代号，多个用逗号隔开，例如 chiangmai,events。只挡定时运行，手动运行不受影响。
           RUN=true
