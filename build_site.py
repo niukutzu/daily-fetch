@@ -148,9 +148,9 @@ def main():
         with open(os.path.join(SITE, "feeds", fname), "w", encoding="utf-8") as f:
             f.write("\n".join(out))
 
-    feed("all.xml", "每日情报 · 全部", index)
+    feed("all.xml", "黎明简报 · 全部", index)
     for bot, name, *_ in BOTS:
-        feed(f"{bot}.xml", f"每日情报 · {name}", [x for x in index if x["bot"] == bot])
+        feed(f"{bot}.xml", f"黎明简报 · {name}", [x for x in index if x["bot"] == bot])
 
     shutil.copy(os.path.join(BASE, "web", "index.html"), os.path.join(SITE, "index.html"))
     open(os.path.join(SITE, ".nojekyll"), "w").close()

@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0e10">
-<title>每日情报</title>
+<title>黎明简报</title>
 <!-- v2 -->
-<link rel="alternate" type="application/rss+xml" title="每日情报 · 全部" href="feeds/all.xml">
+<link rel="alternate" type="application/rss+xml" title="黎明简报 · 全部" href="feeds/all.xml">
 <style>
 :root{
   --bg:#0e0e10; --side:#121214; --raise:#18181b; --card:#1a1a1e; --hover:#1c1c20; --sel:#232328;
@@ -28,9 +28,13 @@ a{color:var(--link);text-decoration:none}
 
 /* 左栏 */
 .side{width:320px;flex:none;display:flex;flex-direction:column;background:var(--side);border-right:1px solid var(--line)}
-.side-top{display:flex;align-items:center;gap:10px;padding:18px 18px 12px}
-.side-top h1{flex:1;margin:0;font-size:19px;letter-spacing:.3px}
-.side-top small{font-size:12px;color:var(--muted)}
+.side{background:radial-gradient(120% 220px at 0 0,rgba(251,146,60,.10),rgba(244,63,94,.04) 55%,transparent 100%),var(--side)}
+.side-top{display:flex;align-items:center;gap:12px;padding:20px 18px 14px}
+.logo{width:38px;height:38px;flex:none;border-radius:11px;background:#1a1a1e;border:1px solid #2a2a2f;display:flex;align-items:center;justify-content:center}
+.brand{flex:1;min-width:0}
+.side-top h1{margin:0;font-size:19px;line-height:1.2;letter-spacing:1.5px;font-weight:700}
+.side-top small{display:block;margin-top:3px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-top small b{font-weight:500;color:#fdba74}
 .search{display:flex;align-items:center;gap:8px;height:40px;margin:0 14px 10px;padding:0 12px;border-radius:12px;background:var(--hover)}
 .search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:16px}
 .search input::placeholder{color:#7d7d85}
@@ -309,13 +313,22 @@ a{color:var(--link);text-decoration:none}
   .pclose{display:none}
   .art h1{font-size:22px}
   .side-top h1{font-size:24px}
+  .logo{width:44px;height:44px;border-radius:13px}
+  .side-top small{font-size:13px}
 }
 </style>
 </head>
 <body>
 <div class="app" id="app" data-scr="list">
   <aside class="side">
-    <div class="side-top"><h1>每日情报</h1><small id="built"></small></div>
+    <div class="side-top">
+      <span class="logo" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <defs><linearGradient id="dawn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbbf24"/><stop offset="1" stop-color="#f43f5e"/></linearGradient></defs>
+        <path d="M5 16a7 7 0 0 1 14 0z" fill="url(#dawn)"/>
+        <path d="M12 3.5v2.5M4.9 7.4l1.8 1.8M19.1 7.4l-1.8 1.8" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M2.5 16h19M7 19.5h10" stroke="#a1a1aa" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <div class="brand"><h1>黎明简报</h1><small id="built"></small></div>
+    </div>
     <label class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b8b93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="q" type="search" placeholder="搜索 Bot 或报告" aria-label="搜索">
@@ -408,7 +421,17 @@ function render(){
   renderSide(); renderHdr(); renderBody(); renderPanel();
 }
 
+function renderBrand(){
+  const d = S.data; if(!d) return;
+  const t = todayStr(), today = d.items.filter(x => x.date === t);
+  const unread = d.items.filter(x => x.date === t && !READ.has(x.id)).length;
+  const parts = [`${wk(t)} ${md(t)}`];
+  if(today.length){ parts.push(`今天 ${today.length} 份`); parts.push(unread ? `<b>${unread} 份未读</b>` : "已全部读完"); }
+  else parts.push(`${d.built.slice(11,16)} 更新`);
+  $("built").innerHTML = parts.join(" · ");
+}
 function renderSide(){
+  renderBrand();
   const q = S.q.trim().toLowerCase();
   const list = S.data.bots.filter(b => !q || b.name.toLowerCase().includes(q) ||
     reps(b.id).some(r => r.title.toLowerCase().includes(q) || (r.items||[]).some(i => (i.title + i.text).toLowerCase().includes(q))));
@@ -570,7 +593,7 @@ const API = "https://api.github.com/repos/" + REPO + "/actions";
 const tok = { get(){ try{ return localStorage.getItem("df_gh_token") || ""; }catch(e){ return S._tok || ""; } },
   set(v){ S._tok = v; try{ v ? localStorage.setItem("df_gh_token", v) : localStorage.removeItem("df_gh_token"); }catch(e){} } };
 const TOKEN_URL = "https://github.com/settings/personal-access-tokens/new?name=" + encodeURIComponent("daily-fetch 开关")
-  + "&description=" + encodeURIComponent("每日情报网站：暂停/恢复 Bot、立即运行") + "&target_name=" + REPO.split("/")[0]
+  + "&description=" + encodeURIComponent("黎明简报网站：暂停/恢复 Bot、立即运行") + "&target_name=" + REPO.split("/")[0]
   + "&expires_in=none&actions_variables=write&actions=write";
 async function gh(method, path, body){
   const r = await fetch(API + path, { method, headers:{ Authorization:"Bearer " + tok.get(), Accept:"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" },
@@ -840,7 +863,7 @@ addEventListener("keydown", e => { if(e.key === "Escape" && S.reading) backBtn()
 $("pShare").onclick = async () => {
   const url = location.href.split("#")[0] + "#" + S.reading, r = S.data.items.find(x => x.id === S.reading);
   try{
-    if(navigator.share && matchMedia("(hover:none)").matches) await navigator.share({ title: r ? r.title : "每日情报", url });
+    if(navigator.share && matchMedia("(hover:none)").matches) await navigator.share({ title: r ? r.title : "黎明简报", url });
     else { await navigator.clipboard.writeText(url); $("pShare").textContent = "已复制链接"; setTimeout(() => $("pShare").textContent = "分享", 2000); }
   }catch(e){}
 };
@@ -849,7 +872,6 @@ let wasNarrow = narrow();
 addEventListener("resize", () => { if(narrow() !== wasNarrow){ wasNarrow = narrow(); render(); } });
 fetch("data.json?" + Date.now()).then(r => r.json()).then(d => {
   S.data = d;
-  $("built").textContent = d.built.slice(5, 10).replace("-", "月") + "日 更新";
   const hash = location.hash.slice(1), hit = d.items.find(x => x.id === hash);
   if(hit){ go({ sel:hit.bot, reading:hit.id, scr:"chat" }, false); }
   else {

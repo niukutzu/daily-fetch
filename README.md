@@ -1,4 +1,4 @@
-# 每日情报（从 Grok Bot 迁移过来）
+# 黎明简报（从 Grok Bot 迁移过来）
 
 每天 GitHub 自动免费运行抓取脚本，再调用你填写的 AI 接口写成中文报告。
 
@@ -36,7 +36,7 @@
 暂停的 Bot 到点不会运行（不耗 AI 额度），手动运行仍然可以。想恢复：把代号从 Value 里删掉，或者删掉整个变量。
 
 ## 手动运行一次
-Actions → 每日情报 → Run workflow → 选 Bot → 绿色 Run workflow。
+Actions → 黎明简报 → Run workflow → 选 Bot → 绿色 Run workflow。
 
 ## 想改报告内容
 编辑 `prompts/<bot>.md`，就是给 AI 的要求，用中文写。

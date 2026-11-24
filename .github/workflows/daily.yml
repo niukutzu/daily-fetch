@@ -1,4 +1,4 @@
-name: 每日情报
+name: 黎明简报
 
 on:
   schedule:
