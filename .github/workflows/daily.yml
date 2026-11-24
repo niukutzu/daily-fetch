@@ -1,0 +1,90 @@
+name: 每日情报
+
+on:
+  schedule:
+    # GitHub 用 UTC 时间，北京时间 = UTC + 8。GitHub 定时经常会晚 5～30 分钟。
+    - cron: "0 0 * * *"    # 08:00 全球科技
+    - cron: "15 0 * * *"   # 08:15 国际政治
+    - cron: "30 0 * * *"   # 08:30 全球金融
+    - cron: "45 0 * * *"   # 08:45 Reddit
+    - cron: "0 1 * * *"    # 09:00 电音与DJ
+    - cron: "15 1 * * *"   # 09:15 海外商业与套利
+    - cron: "30 1 * * 4"   # 周四 09:30 演出与艺文
+    - cron: "30 1 * * 6"   # 周六 09:30 音乐发行
+  workflow_dispatch:
+    inputs:
+      bot:
+        description: "手动运行哪个 Bot"
+        required: true
+        default: tech
+        type: choice
+        options: [tech, politics, finance, reddit, music, commerce, events, releases]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: daily-fetch
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 决定运行哪个 Bot
+        id: pick
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 0 * * *")  BOT=tech ;;
+            "15 0 * * *") BOT=politics ;;
+            "30 0 * * *") BOT=finance ;;
+            "45 0 * * *") BOT=reddit ;;
+            "0 1 * * *")  BOT=music ;;
+            "15 1 * * *") BOT=commerce ;;
+            "30 1 * * 4") BOT=events ;;
+            "30 1 * * 6") BOT=releases ;;
+            *) BOT="${{ inputs.bot }}" ;;
+          esac
+          echo "bot=$BOT" >> "$GITHUB_OUTPUT"
+          echo "运行：$BOT"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 抓取（不耗 AI 额度）
+        run: python fetch_all.py --bot ${{ steps.pick.outputs.bot }}
+
+      - name: AI 写中文报告并推送
+        env:
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'google/gemini-3.1-flash-lite' }}
+          LLM_MODEL_TECH: ${{ vars.LLM_MODEL_TECH }}
+          LLM_MODEL_POLITICS: ${{ vars.LLM_MODEL_POLITICS }}
+          LLM_MODEL_FINANCE: ${{ vars.LLM_MODEL_FINANCE }}
+          LLM_MODEL_REDDIT: ${{ vars.LLM_MODEL_REDDIT }}
+          LLM_MODEL_MUSIC: ${{ vars.LLM_MODEL_MUSIC }}
+          LLM_MODEL_COMMERCE: ${{ vars.LLM_MODEL_COMMERCE }}
+          LLM_MODEL_EVENTS: ${{ vars.LLM_MODEL_EVENTS }}
+          LLM_MODEL_RELEASES: ${{ vars.LLM_MODEL_RELEASES }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python write_report.py ${{ steps.pick.outputs.bot }}
+
+      - name: 保存报告和去重记录
+        run: |
+          git config user.name "daily-fetch-bot"
+          git config user.email "actions@github.com"
+          git add reports state
+          git commit -m "报告：${{ steps.pick.outputs.bot }} $(TZ=Asia/Shanghai date +%F)" || echo "没有变化"
+          git pull --rebase origin main && git push origin HEAD:main
