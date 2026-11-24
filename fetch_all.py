@@ -1222,6 +1222,202 @@ def run_releases_bot():
     return payload
 
 # ==============================================================================
+# 9. CHIANG MAI EVENTS BOT (清迈活动 — 未来 7 天；电子乐 / 艺术 / 电影 / 文学 / 社交)
+# ==============================================================================
+ICT = timezone(timedelta(hours=7))  # 清迈时间
+CM_DAYS_AHEAD = 7
+STEVE_DOC_ID = "15MtcTuLt7biryCT5kFQ0bg4wseXBZ8CIPplIXza8JuA"  # tiny.cc/stevesemail 指向的 Google 文档
+CM_MONTHS = {m: i for i, m in enumerate(
+    ["january", "february", "march", "april", "may", "june", "july",
+     "august", "september", "october", "november", "december"], 1)}
+CM_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+CM_WEEKDAYS_CN = ["每周一", "每周二", "每周三", "每周四", "每周五", "每周六", "每周日"]
+# 商业推广（酒店自助餐、水疗、健身课等）直接去掉，省 AI 费用
+CM_EXCLUDE = ["buffet", "set dinner", "dinner cruise", "brunch", "spa ", "massage", "golf", "crossfit",
+              "padel", "bridge club", "rugby", "football", "aquatic", "mobility", "hiit", "bingo",
+              "christ-centered", "40+", "women’s lunch", "promotion"]
+# 每周固定活动太多，只留和你兴趣有关的
+CM_WEEKLY_KEEP = ["dj", "techno", "house", "rave", "jam", "open mic", "live music", "music night", "jazz",
+                  "blues", "vinyl", "record", "film", "cinema", "movie", "screening", "book", "writ", "poetry",
+                  "art", "sketch", "gallery", "comedy", "improv", "language exchange", "exchange", "quiz",
+                  "trivia", "meetup", "social", "hostel", "nomad", "game night", "board game", "salsa", "bachata"]
+
+
+def _cm_date(month_name: str, day: str, today):
+    m = CM_MONTHS.get(month_name.lower())
+    if not m:
+        return None
+    year = today.year
+    if m < today.month - 6:   # 11 月看到 1 月 → 明年
+        year += 1
+    elif m > today.month + 6:
+        year -= 1
+    try:
+        return datetime(year, m, int(day)).date()
+    except ValueError:
+        return None
+
+
+_CM_DATE_RE = re.compile(
+    r"^(?P<until>now\s+until\s+)?(?P<m1>[A-Za-z]+)\s+(?P<d1>\d{1,2})(?:st|nd|rd|th)?"
+    r"(?:\s*(?:–|—|-|&|and|to|until)\s*(?:(?P<m2>[A-Za-z]+)\s+)?(?P<d2>\d{1,2}))?",
+    re.I,
+)
+
+
+def _cm_first_url(text: str, fallback: str) -> str:
+    m = re.search(r"https?://[^\s)\]]+", text)
+    return m.group(0).rstrip(".,;") if m else fallback
+
+
+def fetch_cm_steve_list():
+    """Steve 的清迈活动清单（本地老外每周更新的 Google 文档，400+ 活动）。"""
+    url = f"https://docs.google.com/document/d/{STEVE_DOC_ID}/export?format=txt"
+    page = f"https://docs.google.com/document/d/{STEVE_DOC_ID}/mobilebasic"
+    r = polite_get(url, referer="https://docs.google.com/")
+    if r.status_code != 200:
+        return [], "FAILED", url
+    today = datetime.now(ICT).date()
+    end = today + timedelta(days=CM_DAYS_AHEAD - 1)
+    items, mode, weekday = [], "dated", None
+    n_dated = n_weekly = 0
+    for raw in r.text.splitlines():
+        line = re.sub(r"\s+", " ", raw.replace("﻿", "")).strip()
+        if not line:
+            continue
+        low = line.lower()
+        if "weekly events that seldom change" in low:
+            mode = "weekly"
+            continue
+        if mode == "weekly" and low.startswith("notices"):
+            break
+        if any(w in low for w in CM_EXCLUDE):
+            continue
+        if mode == "weekly":
+            if line in CM_WEEKDAYS:
+                weekday = CM_WEEKDAYS.index(line)
+                continue
+            if weekday is None or not any(k in low for k in CM_WEEKLY_KEEP):
+                continue
+            label = f"{CM_WEEKDAYS_CN[weekday]}（固定活动）"
+        else:
+            m = _CM_DATE_RE.match(line)
+            if not m:
+                continue
+            d1 = _cm_date(m.group("m1"), m.group("d1"), today)
+            if not d1:
+                continue
+            if m.group("d2"):
+                d2 = _cm_date(m.group("m2") or m.group("m1"), m.group("d2"), today) or d1
+            else:
+                d2 = d1
+            if m.group("until"):
+                d1, d2 = today, d1
+            if d2 < today or d1 > end:
+                continue
+            label = f"{max(d1, today):%m-%d}" + (f" ~ {d2:%m-%d}" if d2 != d1 else "")
+        if mode == "weekly" and n_weekly >= 50:
+            continue
+        if mode == "dated" and n_dated >= 100:
+            continue
+        n_weekly += mode == "weekly"
+        n_dated += mode == "dated"
+        items.append({
+            "source": "Steve's Chiang Mai List",
+            "category": "清迈每周固定活动" if mode == "weekly" else "清迈未来7天活动",
+            "title": clean_text(line, 70),
+            "url": _cm_first_url(line, page),
+            "published": label,
+            "summary": clean_text(line, 200 if mode == "weekly" else 300),
+        })
+    return items, "L2_GDOC_TXT", url
+
+
+def fetch_cm_timeout():
+    """Time Out 清迈：本月和上月的活动 / 艺术 / 新闻文章，只取最近 3 周发的。"""
+    now = datetime.now(ICT)
+    prev = (now.replace(day=1) - timedelta(days=1))
+    links = []
+    for y, m in ((now.year, now.month), (prev.year, prev.month)):
+        sm = f"https://www.timeout.com/chiang-mai/sitemaps/{y}/{m:02d}"
+        try:
+            r = polite_get(sm, referer="https://www.timeout.com/chiang-mai")
+            if r.status_code != 200:
+                continue
+            for href in re.findall(r'href="(https://www\.timeout\.com/chiang-mai/(?:things-to-do|art|news|music|film|nightlife|theatre)/[^"#?]+)"', r.text):
+                if href.endswith("/weekly-event") or href in links:
+                    continue
+                links.append(href)
+        except Exception:
+            pass
+    items = []
+    cutoff = now - timedelta(days=21)
+    for href in links[:30]:
+        if len(items) >= 15:
+            break
+        try:
+            r = polite_get(href, referer="https://www.timeout.com/chiang-mai")
+            if r.status_code != 200:
+                continue
+            soup = BeautifulSoup(r.text, "lxml")
+            t = soup.find("time", attrs={"datetime": True})
+            pub = t["datetime"][:10] if t else ""
+            if t:
+                try:
+                    if datetime.fromisoformat(t["datetime"]) < cutoff:
+                        continue
+                except ValueError:
+                    pass
+            og = soup.find("meta", property="og:title")
+            title = (og.get("content", "") if og else "").split(" | ")[0]
+            text = soup.get_text("\n", strip=True)
+            body = ""
+            if "Time Out says" in text:
+                body = text.split("Time Out says", 1)[1].split("\nDetails", 1)[0].split("\nAdvertising", 1)[0]
+            body = re.sub(r"\s+", " ", body).strip()
+            if not body:
+                desc = soup.find("meta", attrs={"name": "description"})
+                body = desc.get("content", "") if desc else ""
+            if len(body) > 520:  # 保留开头介绍 + 结尾那行（日期、票价、地点）
+                body = body[:300] + " … " + body[-200:]
+            if not title:
+                continue
+            items.append({
+                "source": "Time Out Chiang Mai",
+                "category": "清迈活动文章",
+                "title": clean_text(title, 160),
+                "url": href,
+                "published": pub,
+                "summary": body or title,
+            })
+        except Exception:
+            pass
+    return items, "L2_CURL_CFFI_HTML", "https://www.timeout.com/chiang-mai/sitemaps"
+
+
+def fetch_cm_gnews():
+    items = []
+    for q, cat in [
+        ('"Chiang Mai" (techno OR DJ OR rave OR club OR "live music" OR jazz) when:14d', "新闻搜索 · 音乐与夜生活"),
+        ('"Chiang Mai" (exhibition OR gallery OR film OR cinema OR "book fair" OR festival) when:14d', "新闻搜索 · 艺术与节庆"),
+    ]:
+        try:
+            items.extend(fetch_gnews_fallback(q, "Google News 搜索", cat, limit=6))
+        except Exception:
+            pass
+    return items, "L3_GNEWS_SEARCH", "gnews:Chiang Mai"
+
+
+def run_chiangmai_bot():
+    tasks = [
+        ("Steve's Chiang Mai List", fetch_cm_steve_list),
+        ("Time Out Chiang Mai", fetch_cm_timeout),
+        ("Google News 搜索", fetch_cm_gnews),
+    ]
+    return execute_bot_tasks("chiangmai", tasks)
+
+
+# ==============================================================================
 # EXECUTOR & OUTPUT GENERATOR
 # ==============================================================================
 def execute_bot_tasks(bot_name: str, tasks: list, max_workers: int = 3):
@@ -1327,7 +1523,7 @@ def main():
     except Exception:
         pass
     parser = argparse.ArgumentParser(description="Daily 0-Token Pre-Fetcher for 6 Bots")
-    parser.add_argument("--bot", type=str, default="all", choices=["tech", "finance", "politics", "music", "commerce", "reddit", "events", "releases", "all"])
+    parser.add_argument("--bot", type=str, default="all", choices=["tech", "finance", "politics", "music", "commerce", "reddit", "events", "releases", "chiangmai", "all"])
     args = parser.parse_args()
 
     runners = {
@@ -1339,11 +1535,12 @@ def main():
         "reddit": run_reddit_bot,
         "events": run_events_bot,
         "releases": run_releases_bot,
+        "chiangmai": run_chiangmai_bot,
     }
 
     if args.bot == "all":
         summary = {}
-        for b in ["tech", "finance", "politics", "music", "commerce", "reddit", "events", "releases"]:
+        for b in ["tech", "finance", "politics", "music", "commerce", "reddit", "events", "releases", "chiangmai"]:
             summary[b] = runners[b]()
     else:
         runners[args.bot]()

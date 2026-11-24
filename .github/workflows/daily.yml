@@ -9,6 +9,7 @@ on:
     - cron: "45 0 * * *"   # 08:45 Reddit
     - cron: "0 1 * * *"    # 09:00 电音与DJ
     - cron: "15 1 * * *"   # 09:15 海外商业与套利
+    - cron: "30 1 * * 3"   # 周三 09:30 清迈活动
     - cron: "30 1 * * 4"   # 周四 09:30 演出与艺文
     - cron: "30 1 * * 6"   # 周六 09:30 音乐发行
   workflow_dispatch:
@@ -18,7 +19,7 @@ on:
         required: true
         default: tech
         type: choice
-        options: [tech, politics, finance, reddit, music, commerce, events, releases, 只更新网站]
+        options: [tech, politics, finance, reddit, music, commerce, events, releases, chiangmai, 只更新网站]
 
 permissions:
   contents: write
@@ -46,6 +47,7 @@ jobs:
             "45 0 * * *") BOT=reddit ;;
             "0 1 * * *")  BOT=music ;;
             "15 1 * * *") BOT=commerce ;;
+            "30 1 * * 3") BOT=chiangmai ;;
             "30 1 * * 4") BOT=events ;;
             "30 1 * * 6") BOT=releases ;;
             *) BOT="${{ inputs.bot }}" ;;
@@ -81,6 +83,7 @@ jobs:
           LLM_MODEL_COMMERCE: ${{ vars.LLM_MODEL_COMMERCE }}
           LLM_MODEL_EVENTS: ${{ vars.LLM_MODEL_EVENTS }}
           LLM_MODEL_RELEASES: ${{ vars.LLM_MODEL_RELEASES }}
+          LLM_MODEL_CHIANGMAI: ${{ vars.LLM_MODEL_CHIANGMAI }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python write_report.py ${{ steps.pick.outputs.bot }}

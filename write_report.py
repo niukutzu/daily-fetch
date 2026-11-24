@@ -31,6 +31,7 @@ NAMES = {
     "reddit": "Reddit 每日精选",
     "events": "演出与艺文每周排期",
     "releases": "每周六全球音乐发行盘点",
+    "chiangmai": "清迈未来 7 天活动",
 }
 
 COMMON_RULES = """

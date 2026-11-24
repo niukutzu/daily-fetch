@@ -16,6 +16,7 @@
 | Reddit | reddit | 每天 08:45 |
 | 电音与DJ | music | 每天 09:00 |
 | 海外商业与套利 | commerce | 每天 09:15 |
+| 清迈活动（未来 7 天） | chiangmai | 每周三 09:30 |
 | 演出与艺文 | events | 每周四 09:30 |
 | 音乐发行 | releases | 每周六 09:30 |
 
@@ -34,7 +35,7 @@ Actions → 每日情报 → Run workflow → 选 Bot → 绿色 Run workflow。
 编辑 `prompts/<bot>.md`，就是给 AI 的要求，用中文写。
 
 ## 文件说明
-- `fetch_all.py`：抓取脚本（原 Grok 云电脑上的版本；Reddit 改用 Arctic Shift 接口）
+- `fetch_all.py`：抓取脚本（原 Grok 云电脑上的版本；Reddit 改用 Arctic Shift 接口；清迈活动抓 Steve 的活动清单、Time Out 清迈、Google 新闻搜索）
 - `write_report.py`：调用 AI 写报告、推送
 - `state/`：演出和音乐发行的去重记录
 - `.github/workflows/daily.yml`：定时设置
