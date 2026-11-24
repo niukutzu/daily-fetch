@@ -554,6 +554,47 @@ def enrich_tech(items: list):
     print(f"[TECH] 原文开头：{got}/{len(jobs)} 条拿到，用时 {round(time.time() - t0, 1)}s")
 
 
+def enrich_generic(items: list, lead_limit: int = 25):
+    """非科技 Bot 的加料：去跟踪参数、热度文字、Reddit 热帖排名、短摘要条目抓原文开头。"""
+    t0 = time.time()
+    for it in items:
+        it["url"] = strip_tracking(it.get("url", ""))
+        summ = it.get("summary", "")
+        m = re.match(r"score=(\d+) comments=(\d+)", summ)
+        if m:
+            it["heat_text"] = f"Reddit {m.group(1)} 赞 / {m.group(2)} 评"
+            it["_score"] = int(m.group(1))
+        m = re.match(r"24h Vol: \$([\d,]+)", summ)
+        if m:
+            it["heat_text"] = f"24 小时成交 ${int(m.group(1).replace(',', '')) / 1e6:.2f}M"
+        m = re.search(r"(\d+) pts, (\d+) comments", summ)
+        if m:
+            it["heat_text"] = f"HN {m.group(1)} 分 / {m.group(2)} 评"
+    pm = [it for it in items if it["source"] == "Polymarket"]
+    for k, it in enumerate(pm, 1):
+        it["rank"] = k
+    reddit = sorted([it for it in items if "_score" in it], key=lambda x: -x["_score"])
+    for k, it in enumerate(reddit[:10], 1):
+        it["rank"], it["rank_group"] = k, "Reddit"
+    for it in items:
+        it.pop("_score", None)
+
+    jobs = [it for it in items if len(it.get("summary", "")) < 160 and _host(it.get("url", ""))
+            and not any(_host(it["url"]).endswith(d) for d in NO_LEAD + ("reddit.com",))][:lead_limit]
+    if not jobs:
+        return
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futs = {pool.submit(fetch_lead, it["url"]): it for it in jobs}
+        for f in as_completed(futs):
+            try:
+                lead = f.result()
+            except Exception:
+                lead = ""
+            if lead:
+                futs[f]["lead"] = lead
+    print(f"[加料] 原文开头：{sum(1 for it in jobs if it.get('lead'))}/{len(jobs)} 条拿到，用时 {round(time.time() - t0, 1)}s")
+
+
 def run_tech_bot():
     tasks = [
         ("GitHub Trending", fetch_tech_github),
@@ -670,7 +711,7 @@ def fetch_finance_fred_and_macro():
             "title": "Live Global Macro Tickers (S&P 500, Nasdaq, 10Y Yield, DXY, Gold, WTI, BTC)",
             "url": "https://finance.yahoo.com/markets/",
             "published": datetime.now(CST).strftime("%Y-%m-%d %H:%M"),
-            "summary": clean_text(" | ".join(macro_parts), 150),
+            "summary": clean_text(" | ".join(macro_parts), 600),
         })
     return items, "L1_OFFICIAL_API_AND_RSS", "https://fredblog.stlouisfed.org/feed/"
 
@@ -733,7 +774,7 @@ def run_finance_bot():
         ("Apollo Daily Spark", fetch_finance_apollo),
         ("Sherwood News", lambda: fetch_rss_with_fallback("Sherwood News", "Markets & Tech", ["https://sherwood.news/rss.xml"], "site:sherwood.news", 5)),
     ]
-    return execute_bot_tasks("finance", tasks)
+    return execute_bot_tasks("finance", tasks, post=enrich_generic)
 
 
 # ==============================================================================
@@ -853,7 +894,7 @@ def run_politics_bot():
         ("Nikkei Asia", lambda: fetch_rss_with_fallback("Nikkei Asia", "Asia Geopolitics", ["https://asia.nikkei.com/rss/feed/nar"], "site:asia.nikkei.com", 5)),
         ("SCMP", lambda: fetch_rss_with_fallback("SCMP", "China & Diplomacy", ["https://www.scmp.com/rss/91/feed"], "site:scmp.com", 6)),
     ]
-    return execute_bot_tasks("politics", tasks)
+    return execute_bot_tasks("politics", tasks, post=enrich_generic)
 
 
 # ==============================================================================
@@ -934,7 +975,7 @@ def run_music_bot():
         ("Synthtopia", lambda: fetch_rss_with_fallback("Synthtopia", "Hardware & Synths", ["https://www.synthtopia.com/feed/"], "site:synthtopia.com", 5)),
         ("MusicRadar", lambda: fetch_rss_with_fallback("MusicRadar", "Music Tech", ["https://www.musicradar.com/feeds/all"], "site:musicradar.com", 4)),
     ]
-    return execute_bot_tasks("music", tasks)
+    return execute_bot_tasks("music", tasks, post=enrich_generic)
 
 
 # ==============================================================================
@@ -952,7 +993,7 @@ def _extract_reddit_entries(entries, sub: str, category: str, limit: int, filter
         if any(skip in tl for skip in ["weekly", "discussion hub", "how was your gig", "show us what you", "megathread"]):
             continue
         raw_desc = getattr(e, "summary", "") or (e.content[0].get("value", "") if hasattr(e, "content") and e.content else "")
-        summary = clean_text(raw_desc, 140)
+        summary = clean_text(raw_desc, 500)
         summary = re.sub(r"submitted by\s+/u/\S+\s*\[link\]\s*\[comments\]", "", summary, flags=re.I).strip()
         items.append({
             "source": f"r/{sub}",
@@ -999,7 +1040,7 @@ def fetch_reddit_sub(sub: str, category: str, limit: int = 4, enrich_scores: boo
                     "title": title,
                     "url": "https://www.reddit.com" + (p.get("permalink") or f"/r/{sub}/comments/{p.get('id')}/"),
                     "published": datetime.fromtimestamp(created, CST).strftime("%Y-%m-%d %H:%M CST") if created else "",
-                    "summary": clean_text(f"score={p.get('score') or 0} comments={p.get('num_comments') or 0} | " + (p.get("selftext") or ""), 170),
+                    "summary": clean_text(f"score={p.get('score') or 0} comments={p.get('num_comments') or 0} | " + (p.get("selftext") or ""), 600),
                     "_rank": ((p.get("score") or 0), (p.get("num_comments") or 0)),
                 })
             items.sort(key=lambda x: x["_rank"], reverse=True)
@@ -1065,7 +1106,7 @@ def run_commerce_bot():
         ("Empire Flippers", lambda: fetch_rss_with_fallback("Empire Flippers", "Digital Asset M&A", ["https://empireflippers.com/feed/"], "site:empireflippers.com", 4)),
         ("Flippa Blog", lambda: fetch_rss_with_fallback("Flippa Blog", "Digital Asset M&A", ["https://flippa.com/blog/feed/"], "site:flippa.com/blog", 4)),
     ]
-    return execute_bot_tasks("commerce", tasks)
+    return execute_bot_tasks("commerce", tasks, post=enrich_generic)
 
 
 # ==============================================================================
@@ -1106,7 +1147,7 @@ def run_reddit_bot():
     for sub, cat in subs:
         lim = 15 if sub == "popular" else 4
         tasks.append((f"r/{sub}", lambda s=sub, c=cat, l=lim: fetch_reddit_sub(s, c, limit=l, enrich_scores=True)))
-    return execute_bot_tasks("reddit", tasks, max_workers=2)
+    return execute_bot_tasks("reddit", tasks, max_workers=2, post=enrich_generic)
 
 
 
@@ -1395,7 +1436,7 @@ def run_releases_bot():
         ("r/electronicmusic [FRESH]", lambda: fetch_reddit_sub("electronicmusic", "Reddit 电子新碟热议", 5)),
         ("r/hiphopheads [FRESH]", lambda: fetch_reddit_sub("hiphopheads", "Reddit 嘻哈/R&B新专", 4)),
     ]
-    payload = execute_bot_tasks("releases", tasks)
+    payload = execute_bot_tasks("releases", tasks, post=enrich_generic)
     seen_path = os.path.join(STATE_DIR, "seen_releases.json")
     seen = {}
     if os.path.exists(seen_path):
@@ -1732,6 +1773,9 @@ def main():
     parser = argparse.ArgumentParser(description="Daily 0-Token Pre-Fetcher for 6 Bots")
     parser.add_argument("--bot", type=str, default="all", choices=["tech", "finance", "politics", "music", "commerce", "reddit", "events", "releases", "chiangmai", "all"])
     args = parser.parse_args()
+    global SUMMARY_LEN
+    if args.bot not in ("chiangmai", "events", "all"):
+        SUMMARY_LEN = 450  # 摘要加长，AI 才写得出 3～5 句介绍
 
     runners = {
         "tech": run_tech_bot,
