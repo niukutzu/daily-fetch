@@ -169,8 +169,8 @@ a{color:var(--link);text-decoration:none}
 .nm-edit input{flex:1;min-width:0;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--blue);background:#111113;color:var(--text);font:inherit;font-size:18px;font-weight:600;text-align:center;outline:0}
 .sq{width:42px;height:42px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center}
 .sq.ok{background:var(--blue2);color:#fff}.sq.no{background:#222228;color:var(--sub)}
-.av.blob{background:#1c1c20!important}
-.av.blob svg{width:86%;height:86%}
+.av.blob{background:transparent!important}
+.av.blob svg{width:100%;height:100%;overflow:visible}
 .avpick{margin:14px 0 4px;padding:12px;border-radius:16px;background:var(--card);border:1px solid #2a2a30;text-align:left;box-shadow:0 12px 30px rgba(0,0,0,.35)}
 .ptabs{display:flex;gap:4px;margin-bottom:10px}
 .ptabs button{height:34px;padding:0 14px;border-radius:10px;color:var(--muted);font-size:14px}
@@ -551,7 +551,8 @@ function shapePath(s){
 }
 function blobSvg(id, color){
   const s = SHAPES.find(x => x.id === id) || SHAPES[0];
-  return `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><g fill="${esc(color)}">${shapePath(s)}</g>
+  const k = s.a ? (1 / (1 + s.a)).toFixed(3) : s.id === "d" ? .86 : s.id === "p" ? .95 : 1;
+  return `<svg viewBox="15 17 70 70" width="100%" height="100%" aria-hidden="true"><g fill="${esc(color)}" transform="translate(50 52) scale(${k}) translate(-50 -52)">${shapePath(s)}</g>
     <g fill="#1c1917"><rect x="50" y="38" width="6" height="13" rx="3"/><rect x="62" y="38" width="6" height="13" rx="3"/></g></svg>`;
 }
 
