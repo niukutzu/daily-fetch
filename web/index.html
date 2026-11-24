@@ -70,6 +70,20 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav button:disabled{opacity:.35;cursor:default}
 .hint{color:var(--muted);text-align:center;padding-top:30vh}
 .rss-box{font-size:12px;word-break:break-all}
+/* Bot 开关 */
+.sw-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.sw-row .nm{flex:1}
+.sw-row .st{font-size:13px;color:var(--muted)}
+.tog{width:48px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;transition:.2s}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tog.on{background:#16a34a}.tog.on::after{left:23px}
+.tog:disabled{opacity:.5}
+.box{border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0;background:var(--sel)}
+.box ol{padding-left:20px;margin:6px 0}.box li{margin:6px 0}
+.inp{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:inherit}
+.btn{padding:9px 18px;border-radius:8px;background:var(--accent);color:#fff;font-weight:600}
+.btn2{padding:6px 12px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:13px}
+.msg{font-size:13px;margin-top:10px;min-height:1.4em}
 /* 手机 */
 @media (max-width:900px){
   .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:100vh}
@@ -94,6 +108,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <h2 id="listTitle">全部</h2>
       <button class="chip" id="unreadOnly">只看未读</button>
       <button class="chip" id="markAll">全部已读</button>
+      <button class="chip" id="swBtn">⚙️ 开关</button>
     </div>
     <div class="items" id="items"></div>
   </section>
@@ -161,6 +176,95 @@ async function open_(id){
   if(next) $("nx").onclick = () => location.hash = next.id;
   renderAll();
 }
+
+/* ===== Bot 开关：改仓库 Variables 里的 PAUSED_BOTS ===== */
+const REPO = location.hostname.endsWith(".github.io")
+  ? location.hostname.split(".")[0] + "/" + (location.pathname.split("/")[1] || "daily-fetch")
+  : "niukutzu/daily-fetch";
+const API = "https://api.github.com/repos/" + REPO + "/actions/variables";
+const tok = {
+  get(){ try{ return localStorage.getItem("df_gh_token") || S._tok || ""; }catch(e){ return S._tok || ""; } },
+  set(v){ S._tok = v; try{ v ? localStorage.setItem("df_gh_token", v) : localStorage.removeItem("df_gh_token"); }catch(e){} }
+};
+async function gh(method, url, body){
+  const r = await fetch(url, {method, headers:{
+    "Authorization":"Bearer " + tok.get(), "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"},
+    body: body ? JSON.stringify(body) : undefined});
+  if(r.status === 401) throw new Error("钥匙无效或已过期，请点下面「换一把钥匙」重新填");
+  if(r.status === 403) throw new Error("钥匙权限不够：创建时要选 daily-fetch 仓库，Variables 要选 Read and write");
+  return r;
+}
+async function readPaused(){
+  const r = await gh("GET", API + "/PAUSED_BOTS");
+  if(r.status === 404) return {exists:false, list:[]};
+  if(!r.ok) throw new Error("读取失败（" + r.status + "）");
+  const v = (await r.json()).value || "";
+  return {exists:true, list: v.split(/[,，\s]+/).filter(Boolean)};
+}
+async function writePaused(list, exists){
+  const value = list.join(",");
+  let r;
+  if(!list.length) r = await gh("DELETE", API + "/PAUSED_BOTS");
+  else if(exists) r = await gh("PATCH", API + "/PAUSED_BOTS", {name:"PAUSED_BOTS", value});
+  else r = await gh("POST", API, {name:"PAUSED_BOTS", value});
+  if(!r.ok && r.status !== 404) throw new Error("保存失败（" + r.status + "）");
+}
+const TOKEN_URL = "https://github.com/settings/personal-access-tokens/new?name=" + encodeURIComponent("daily-fetch 开关")
+  + "&description=" + encodeURIComponent("每日情报网站上的 Bot 暂停开关，只能改 Variables")
+  + "&target_name=" + REPO.split("/")[0] + "&expires_in=none&actions_variables=write";
+
+function shell(inner){
+  S.cur = null; $("app").classList.add("reading");
+  $("reader").innerHTML = `<div class="reader-in"><button class="back" id="back">← 返回列表</button>
+    <h1>⚙️ Bot 开关</h1><div class="sub">关掉的 Bot 到点不会运行，不花 AI 的钱；在 GitHub 手动运行仍然可以。</div>${inner}</div>`;
+  $("back").onclick = () => { $("app").classList.remove("reading"); renderAll(); };
+  $("reader").scrollTop = 0; window.scrollTo(0,0);
+}
+function showTokenForm(err){
+  shell(`<div class="box"><b>第一次用要先给网站一把「钥匙」</b>（只需要做一次，每台手机或电脑各做一次）
+    <ol>
+      <li>点这里：<a href="${TOKEN_URL}" target="_blank" rel="noopener" style="color:var(--link)">打开 GitHub 创建钥匙的页面</a>（名字和权限已经帮你填好了）</li>
+      <li>找到 <b>Repository access</b>，选 <b>Only select repositories</b>，再在下拉框里选 <b>daily-fetch</b></li>
+      <li>拉到最下面，点绿色按钮 <b>Generate token</b>，弹窗里再点一次确认</li>
+      <li>页面上会出现一串以 <code>github_pat_</code> 开头的字，点旁边的复制图标</li>
+      <li>回到这里，粘贴到下面的框里，点「保存」</li>
+    </ol>
+    <input class="inp" id="tokIn" placeholder="github_pat_……" autocomplete="off">
+    <div style="margin-top:10px"><button class="btn" id="tokSave">保存</button></div>
+    <div class="msg" id="msg" style="color:#dc2626">${err ? esc(err) : ""}</div>
+    <p style="font-size:12px;color:var(--muted);margin:10px 0 0">钥匙只存在这台设备的浏览器里，不会上传到网站。它只能改这个仓库的开关，改不了代码，也看不到你的 AI 密钥。</p></div>`);
+  $("tokSave").onclick = () => { const v = $("tokIn").value.trim(); if(!v) return; tok.set(v); openSwitches(); };
+}
+async function openSwitches(){
+  if(!tok.get()) return showTokenForm();
+  shell(`<div class="hint" style="padding-top:10vh">读取中…</div>`);
+  let st;
+  try{ st = await readPaused(); }catch(e){ return showTokenForm(e.message); }
+  const draw = (msg, busy) => {
+    $("reader").querySelector(".reader-in").innerHTML = `<button class="back" id="back">← 返回列表</button>
+      <h1>⚙️ Bot 开关</h1><div class="sub">关掉的 Bot 到点不会运行，不花 AI 的钱；在 GitHub 手动运行仍然可以。</div>
+      ${S.data.bots.map(b => { const on = !st.list.includes(b.id); return `<div class="sw-row">
+        <span class="ico">${b.icon}</span><span class="nm">${esc(b.name)}</span>
+        <span class="st">${on ? "运行中" : "已暂停"}</span>
+        <button class="tog ${on ? "on" : ""}" data-bot="${b.id}" ${busy ? "disabled" : ""} aria-label="${esc(b.name)}"></button></div>`; }).join("")}
+      <div class="msg" id="msg">${msg || ""}</div>
+      <p style="margin-top:30px"><button class="btn2" id="tokReset">换一把钥匙</button></p>`;
+    $("back").onclick = () => { $("app").classList.remove("reading"); renderAll(); };
+    $("tokReset").onclick = () => { tok.set(""); showTokenForm(); };
+    $("reader").querySelectorAll(".tog").forEach(el => el.onclick = async () => {
+      const id = el.dataset.bot, name = botOf(id).name;
+      const list = st.list.includes(id) ? st.list.filter(x => x !== id) : [...st.list, id];
+      draw("保存中…", true);
+      try{
+        await writePaused(list, st.exists);
+        st = {exists: list.length > 0, list};
+        draw(`✅ 已保存：${esc(name)} ${list.includes(id) ? "已暂停" : "已恢复运行"}`);
+      }catch(e){ draw(`<span style="color:#dc2626">❌ ${esc(e.message)}</span>`); }
+    });
+  };
+  draw();
+}
+$("swBtn").onclick = openSwitches;
 
 $("unreadOnly").onclick = () => { S.onlyUnread = !S.onlyUnread; renderList(); };
 $("markAll").onclick = () => { visible().forEach(it => READ.add(it.id)); store.set(READ); renderAll(); };

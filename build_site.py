@@ -31,6 +31,11 @@ BOTS = [
 
 def render(md_text):
     html = markdown.markdown(md_text, extensions=["tables", "sane_lists"])
+    # 网站上存了开关钥匙，报告里的 HTML 一律去掉脚本类内容
+    html = re.sub(r"<\s*(script|iframe|object|embed|style|form)\b.*?(</\s*\1\s*>|$)", "", html, flags=re.I | re.S)
+    html = re.sub(r"<\s*/?\s*(script|iframe|object|embed|style|form|input|button|meta|link)\b[^>]*>", "", html, flags=re.I)
+    html = re.sub(r"\son\w+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", "", html, flags=re.I)
+    html = re.sub(r"(href|src)\s*=\s*([\"'])\s*javascript:[^\"']*\2", r'\1="#"', html, flags=re.I)
     # 外链新窗口打开
     return re.sub(r'<a href="(https?://[^"]+)"', r'<a href="\1" target="_blank" rel="noopener"', html)
 
