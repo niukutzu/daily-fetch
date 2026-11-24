@@ -25,6 +25,7 @@ permissions:
   issues: write
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: daily-fetch
