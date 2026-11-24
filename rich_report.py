@@ -63,7 +63,8 @@ JSON_FORMAT = """
 - terms：挑 1～3 个今天出现的新概念。
 - 中文和英文、数字之间加一个空格，例如「发布 GLM-5.4 模型」「264 亿参数」。
 - 读者是中文用户，不懂英文。全部用平实、句子短的简体中文。不用网络烂梗（炸裂、王炸、遥遥领先等）。
-- 原文自称的收入、用户数、价格等数字，标注【自称，未验证】。
+- 个人或公司自己声称的收入、利润、用户数，标注【自称，未验证】；票价、商品价格、官方统计数据、市场行情不要标。
+- source 只写名字本身，例如「AFP」「r/ableton」，不要写「信源：」之类的前缀。
 """
 
 FALLBACK_FORMAT = """
@@ -120,8 +121,8 @@ def build(bot, today, title, prompt, user, fetched, ask):
         raw = ask(system, msg)
         try:
             data = _extract_json(raw)
-            if not isinstance(data.get("items"), list) or len(data["items"]) < 5:
-                raise ValueError("items 太少")
+            if not isinstance(data.get("items"), list) or not data["items"]:
+                raise ValueError("没有 items")
             break
         except Exception as e:
             err = str(e)[:120]
@@ -149,7 +150,7 @@ def build(bot, today, title, prompt, user, fetched, ask):
             must = 0
         items.append({
             "id": fid,
-            "source": str(x.get("source") or src.get("publisher") or src["source"]).strip()[:40],
+            "source": re.sub(r"^(信源|来源|source)\s*[:：]\s*", "", str(x.get("source") or src.get("publisher") or src["source"]).strip(), flags=re.I)[:40],
             "via": src["source"],
             "category": cat,
             "title_zh": str(x["title_zh"]).strip(),
@@ -163,8 +164,8 @@ def build(bot, today, title, prompt, user, fetched, ask):
             "must_text": str(x.get("must_text") or "").strip(),
             "when": str(x.get("when") or "").strip(),
         })
-    if len(items) < 5:
-        raise ValueError(f"有效条目只有 {len(items)} 条")
+    if not items:
+        raise ValueError("没有有效条目")
 
     # 必看：按 1～5 排；不够 5 条就用前面的补齐，多了就截断
     musts = sorted([i for i in items if i["must"]], key=lambda i: i["must"])[:5]

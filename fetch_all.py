@@ -636,8 +636,8 @@ def fetch_finance_polymarket():
         vol24 = float(ev.get("volume24hr") or 0)
         vol_total = float(ev.get("volume") or 0)
         markets = ev.get("markets", [])
-        odds_parts = []
-        for m in markets[:3]:
+        odds = []
+        for m in markets:
             q = m.get("groupItemTitle") or m.get("question") or ""
             prices = m.get("outcomePrices")
             if isinstance(prices, str):
@@ -647,18 +647,19 @@ def fetch_finance_polymarket():
                     prices = []
             if prices and len(prices) > 0:
                 try:
-                    pct = round(float(prices[0]) * 100, 1)
-                    odds_parts.append(f"{q}: {pct}%")
+                    if not m.get("closed"):
+                        odds.append((float(prices[0]), q))
                 except Exception:
                     pass
-        odds_str = " | ".join(odds_parts)
+        odds.sort(key=lambda x: -x[0])  # 按概率从高到低，只留前 5 个选项
+        odds_str = " | ".join(f"{q}: {round(p * 100, 1)}%" for p, q in odds[:5])
         items.append({
             "source": "Polymarket",
             "category": "Prediction Market",
             "title": title,
             "url": f"https://polymarket.com/event/{slug}",
             "published": datetime.now(CST).strftime("%Y-%m-%d"),
-            "summary": clean_text(f"24h Vol: ${vol24:,.0f} (Total: ${vol_total:,.0f}) | {odds_str}", 150),
+            "summary": clean_text(f"24h Vol: ${vol24:,.0f} (Total: ${vol_total:,.0f}) | {odds_str}", 450),
         })
     return items, "L1_OFFICIAL_API", url
 
@@ -1177,43 +1178,45 @@ def _is_blacklisted_event(text: str, bl_words: list) -> bool:
     return any(w in tl for w in bl_words)
 
 
-def fetch_localhub_city(city_slug: str, city_cn: str):
+def fetch_localhub_city(city_slug: str, city_cn: str, limit: int = 25):
+    """LocalHub 按场地列出近期演出：每条取 演出名 · 艺人 · 日期 · 场地。"""
     url = f"https://localhub.to/{city_slug}?lang=zh"
     r = polite_get(url, referer="https://localhub.to/")
     soup = BeautifulSoup(r.text, "lxml")
     bl = _load_venues_blacklist()
-    items = []
-    seen = set()
-    for a in soup.select("a[href*='/event'], a[href*='/party'], a[href*='/livehouse'], a[href*='/club'], a"):
-        txt = clean_text(a.get_text(" ", strip=True), 160)
-        href = a.get("href", "")
-        if len(txt) < 8 or txt in seen:
-            continue
-        if _is_blacklisted_event(txt, bl):
-            continue
-        if any(k in txt.lower() for k in ["live", "club", "oil", "all", "window", "rozz", "sd", "omni", "疆进酒", "声音共和", "b10", "hou", "mao", "techno", "house", "电子", "乐队", "专场", "演出", "10/", "11/"]):
-            seen.add(txt)
-            full_url = href if href.startswith("http") else f"https://localhub.to{href}"
+    items, seen = [], set()
+    for blk in soup.select("div.venue-block"):
+        shows = blk.select_one("div.venue-shows")
+        venue = ""
+        for node in blk.find_all(string=True):
+            if shows and node.find_parent("div", class_="venue-shows"):
+                continue
+            venue = clean_text(str(node), 60)
+            if venue:
+                break
+        for show in blk.select("div.venue-show-item"):
+            a = show.select_one("a.venue-show-title-link") or show.find("a", href=True)
+            if not a:
+                continue
+            title = clean_text(a.get_text(" ", strip=True), 140)
+            full = clean_text(show.get_text(" ", strip=True), 260)
+            m = re.search(r"(\d{1,2}/\d{1,2})\s*(周[一二三四五六日])?", full)
+            date = m.group(0) if m else ""
+            artists = clean_text(full.replace(title, "", 1).replace(date, "").strip(" •,|"), 120)
+            if not title or title in seen or _is_blacklisted_event(title + " " + venue, bl):
+                continue
+            seen.add(title)
+            href = a.get("href", "")
             items.append({
                 "source": f"LocalHub ({city_cn})",
                 "category": f"{city_cn} · 现场与地下俱乐部",
-                "title": txt[:140],
-                "url": full_url,
+                "title": title,
+                "url": href if href.startswith("http") else f"https://localhub.to{href}",
                 "published": datetime.now(CST).strftime("%Y-%m-%d"),
-                "summary": f"LocalHub {city_cn}近30天排期监控（已通过黑名单过滤）：{txt}",
+                "summary": f"日期：{date or '未注明'} · 场地：{venue or '未注明'}" + (f" · 艺人：{artists}" if artists else ""),
             })
-            if len(items) >= 6:
-                break
-    if not items and r.status_code == 200:
-        page_snippet = clean_text(soup.get_text(" ", strip=True), 220)
-        items.append({
-            "source": f"LocalHub ({city_cn})",
-            "category": f"{city_cn} · 现场与地下俱乐部",
-            "title": f"LocalHub {city_cn}站实时演出与俱乐部排期索引",
-            "url": url,
-            "published": datetime.now(CST).strftime("%Y-%m-%d"),
-            "summary": page_snippet,
-        })
+            if len(items) >= limit:
+                return items, "L2_CURL_CFFI_HTML", url
     return items, "L2_CURL_CFFI_HTML", url
 
 
@@ -1227,6 +1230,12 @@ def fetch_showstart_city(city_code: str, city_cn: str):
         txt = clean_text(a.get_text(" ", strip=True), 150)
         if len(txt) < 6 or _is_blacklisted_event(txt, bl):
             continue
+        mc = re.search(r"\[([^\]]{2,6})\]", txt)
+        if mc and mc.group(1) != city_cn:
+            continue  # 别的城市的活动
+        md = re.search(r"(\d{4})/(\d{2})/(\d{2})", txt)
+        if md and md.group(0) < datetime.now(CST).strftime("%Y/%m/%d"):
+            continue  # 已经过去的活动
         href = a.get("href", "")
         full_url = href if href.startswith("http") else f"https://www.showstart.com{href}"
         items.append({
